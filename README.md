@@ -1,3 +1,6 @@
+# README.md
+
+```markdown
 # KAALK Asset Manager
 
 An enterprise-grade asset manager and store integration for **AutoCAD 2018+**, featuring an embedded WPF palette client and a lightweight, high-performance **FastAPI + SQLite** backend portal.
@@ -75,3 +78,120 @@ The plugin strictly follows a unidirectional 5-layer boundary enforced by automa
 ├── Check-Architecture.cmd      # Architectural boundary enforcement script
 ├── version.txt                 # Major.Minor version seed
 └── CHANGELOG.md                # Detailed project change log
+```
+
+---
+
+### 4. Getting Started
+
+#### Server Setup
+1. Prerequisites: Python 3.10+ installed.
+2. Navigate to the server folder and install dependencies:
+   ```bash
+   cd server
+   pip install -r requirements.txt
+   ```
+3. Run the development server:
+   ```bash
+   python run.py
+   ```
+4. Access the portal:
+   - Web Portal: `http://127.0.0.1:5000/login`
+   - Default Admin Credentials:
+     - **Email**: `admin@kaalk.ir`
+     - **Password**: `Admin@12345`
+   - Interactive API Documentation (Swagger): `http://127.0.0.1:5000/docs`
+
+#### AutoCAD Plugin Compilation
+The assembly compiles via `csc.exe` (C# 5 / .NET 4.x), requiring no external NuGet packages:
+```powershell
+./build/Build.ps1 -Version "0.4.1" -Commit "local"
+```
+The compiled output is placed in `dist/0.4.1/KaalkAssetManager.dll`.
+
+#### Loading in AutoCAD 2018
+1. Launch AutoCAD 2018.
+2. Run the `NETLOAD` command and select `KaalkAssetManager.dll`.
+3. Type `KAALK` to display the version, verify the active session, and toggle the palette.
+
+---
+
+<br><hr><br>
+
+<a name="persian-documentation"></a>
+## Persian Documentation (مستندات فارسی)
+
+### ۱. درباره پروژه
+سیستم مدیریت دارایی **KAALK** یک پلتفرم جامع برای کشف، دانلود، نصب و اجرای خودکار ابزارهای تخصصی اتوکد (نظیر فایل‌های AutoLISP، بلوک‌های دینامیک، الگوهای هاشور و ابزارهای مهندسی) است. ایده بنیادین پروژه این است که کاربر بدون خروج از محیط ترسیم اتوکد و بدون نیاز به وب‌گردی، به تمامی ابزارها دسترسی داشته باشد.
+
+این پروژه از دو بخش اصلی تشکیل شده است:
+1. **کلاینت افزونه اتوکد (`KaalkAssetManager.dll`)**: توسعه‌یافته بر پایه زبان C# 5 و دات‌نت فریم‌ورک 4 با معماری строго ۵ لایه و بدون وابستگی به پکیج‌های خارجی NuGet.
+2. **سرور پلتفرم (`server/`)**: سامانه سبک، ماژولار و بسیار سریع مبتنی بر Python، FastAPI، دیتابیس SQLite3 و قالب‌های Jinja2.
+
+---
+
+### ۲. معماری و اصول فنی
+
+#### معماری افزونه اتوکد
+افزونه کلاینت از قانون معماری یک‌طرفه پیروی می‌کند که قبل از هر کامپایل توسط اسکریپت `Check-Architecture.cmd` بازرسی می‌شود:
+* **لایه امنیت (Security)**: مسئول رمزنگاری اطلاعات سشن کاربر با Windows DPAPI، قوانین اعتبارسنجی گذرواژه و خواندن توکن JWT بدون اینترنت. (فاقد هرگونه وابستگی به شبکه یا UI).
+* **لایه هسته (Core)**: مدیریت ارتباط HTTP، حافظه کش دیسک (`%LOCALAPPDATA%\KAALK\cache`)، پردازش مانیفست‌ها و مدیریت وضعیت نشست. (فاقد وابستگی به اتوکد یا WPF).
+* **لایه ارائه‌دهنده‌ها (Presenters)**: هماهنگ‌کننده تعاملات کاربر، جریان جستجو و فیلتر کردن کاتالوگ بدون وابستگی به فرمت‌های تصویری و انواع WPF.
+* **لایه ظاهر (UI)**: فرم‌ها و کنترل‌های استایل‌دار WPF با تم تیره، مدیریت پیام‌ها و بازخوردها. (بدون دسترسی مستقیم به امنیت یا شبکه).
+* **لایه میزبان (Host)**: نقطه اتصال افزونه به اتوکد، ثبت دستورات خط فرمان (`KAALK` و `KAALKLOGOUT`) و پیکربندی شبکه (اجبار پروتکل TLS 1.2+).
+
+#### معماری سرور (FastAPI + SQLite)
+* **سیستم مانیفست دومرحله‌ای (Two-Tier Manifest)**:
+  * **کاتالوگ سبک (مرحله اول)**: ارسال خلاصه اقلام فروشگاه برای لود آنی و بدون لگ لیست‌ها.
+  * **مانیفست تفصیلی (مرحله دوم)**: ارسال تاریخچه نسخه‌ها، تغییرات هر نسخه (Release Notes)، دستورات اجرایی، و مدیاهای آموزشی تنها با کلیک روی محصول.
+* **اتوماسیون بسته‌بندی پکیج‌ها (`PackageService`)**:
+  * دریافت چند فایل سورس به‌صورت همزمان (`.lsp`، `.dcl`، `.shx`، `.dwg`) و زیپ خودکار آن‌ها همراه با شناسه `package.json`.
+  * تغییر سایز استاندارد آیکون به دو اندازه ۳۲×۳۲ و ۶۴×۶۴ پیکسل با استفاده از ماژول Pillow.
+  * محاسبه خودکار هش SHA-256 و مدیریت نگهداری نسخه‌های تفکیک‌شده (`{version}.zip`) و نسخه پایدار جاری (`latest.zip`).
+* **پرتال وب و پنل مدیریت**:
+  * مدیریت پلن‌های اشتراک داینامیک به واحد تومان با محاسبه تخفیف‌ها و پلن‌های مناسبتی.
+  * جریان شبیه‌سازی‌شده پرداخت مالی امن جهت جلوگیری از ارتقای غیرمجاز بدون تسویه حساب.
+  * پنل مدیریت اختصاصی جهت تعلیق کاربران، ویرایش سطح دسترسی ادمین و حذف نسخه‌های باگ‌دار با بازگردانی خودکار (Rollback).
+
+---
+
+### ۳. راهنمای راه‌اندازی و استفاده
+
+#### راه‌اندازی سرور پایتون
+۱. مطمئن شوید پایتون نسخه 3.10 به بالا روی سیستم نصب است.  
+۲. به پوشه `server` رفته و پیش‌نیازها را نصب کنید:
+```bash
+cd server
+pip install -r requirements.txt
+```
+۳. سرور را اجرا کنید:
+```bash
+python run.py
+```
+۴. پرتال در آدرس `http://127.0.0.1:5000` در دسترس خواهد بود.  
+مشخصات ورود پیش‌فرض مدیر:
+* **ایمیل**: `admin@kaalk.ir`
+* **رمز عبور**: `Admin@12345`
+
+مستندات تعاملی Swagger API:  
+`http://127.0.0.1:5000/docs`
+
+#### بیلد و کامپایل افزونه اتوکد
+کامپایل از طریق کامپایلر بومی ویندوز `csc.exe` انجام می‌شود:
+```powershell
+./build/Build.ps1 -Version "0.4.1" -Commit "local"
+```
+خروجی در مسیر `dist/0.4.1/KaalkAssetManager.dll` قرار خواهد گرفت.
+
+#### بارگذاری داخل اتوکد 2018
+۱. اتوکد 2018 را باز کنید.  
+۲. دستور `NETLOAD` را تایپ کرده و فایل `KaalkAssetManager.dll` را انتخاب کنید.  
+۳. دستور `KAALK` را در خط فرمان وارد کنید تا مشخصات نسخه و سشن فعال چاپ شده و پالت باز شود.
+
+---
+
+### ۴. استانداردهای توسعه
+- **زبان کدنویسی**: تمام کامنت‌ها، نام متغیرها، رشته‌ها و فایل‌های پروژه باید منحصراً به زبان انگلیسی و بدون کاراکترهای تزئینی/ایموجی باشند.
+- **بررسی لایه‌ها**: قبل از هر Commit، اجرای اسکریپت `Check-Architecture.cmd` الزامی است.
+- **نسخه‌گذاری**: شماره نسخه پایه نرم‌افزار در فایل `version.txt` تعیین می‌شود.
+```

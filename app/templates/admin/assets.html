@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Manage Assets - KAALK Admin{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Asset Management</h2>
+    <a href="/admin/publish" class="btn btn-success">Publish New Asset</a>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Icon</th>
+                <th>Name & ID</th>
+                <th>Type</th>
+                <th>Active Version</th>
+                <th>Total Versions</th>
+                <th>Pro Plan</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in assets %}
+            <tr>
+                <td style="width: 50px;">
+                    {% if a.thumb_32_url %}
+                        <img src="{{ a.thumb_32_url }}" width="32" height="32" style="border-radius: 4px; display: block;">
+                    {% else %}
+                        <div style="width: 32px; height: 32px; background: var(--surface-alt); border-radius: 4px;"></div>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>{{ a.name }}</strong>
+                    <div style="color: var(--muted); font-size: 0.75rem;">{{ a.id }}</div>
+                </td>
+                <td>{{ a.type }}</td>
+                <td>{{ a.latest_version or 'None' }}</td>
+                <td>{{ a.version_count }}</td>
+                <td>
+                    {% if a.is_pro %}
+                        <span class="badge badge-pro">PRO</span>
+                    {% else %}
+                        <span class="badge badge-free">FREE</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/admin/assets/{{ a.id }}/versions" class="btn" style="padding: 4px 8px; font-size: 0.75rem;">Manage Versions</a>
+                    <form action="/admin/assets/{{ a.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Delete this entire asset and all associated files?');">
+                        <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

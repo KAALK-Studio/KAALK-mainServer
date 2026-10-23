@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}User Administration - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>User Management</h2>
+        <span style="color: var(--muted); font-size: 0.85rem;">Total Accounts: {{ users|length }}</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name & Email</th>
+                <th>Role</th>
+                <th>Tier</th>
+                <th>Expiration</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>{{ u.id }}</td>
+                <td>
+                    <strong>{{ u.first_name }} {{ u.last_name }}</strong>
+                    <div style="color: var(--muted); font-size: 0.75rem;">{{ u.email }}</div>
+                </td>
+                <td>
+                    {% if u.is_admin %}
+                        <span class="badge" style="background: #e65100; color: #fff;">ADMIN</span>
+                    {% else %}
+                        <span class="badge badge-free">USER</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if u.subscription_tier == 'premium' %}
+                        <span class="badge badge-pro">PRO</span>
+                    {% else %}
+                        <span class="badge badge-free">FREE</span>
+                    {% endif %}
+                </td>
+                <td style="font-size: 0.8rem;">{{ u.subscription_expires_at[:10] if u.subscription_expires_at else '-' }}</td>
+                <td>
+                    {% if u.is_suspended %}
+                        <span class="badge" style="background: var(--danger); color: #fff;">SUSPENDED</span>
+                    {% else %}
+                        <span class="badge" style="background: var(--success); color: #fff;">ACTIVE</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="/admin/users/{{ u.id }}/edit" class="btn" style="padding: 4px 8px; font-size: 0.75rem;">Edit</a>
+                    <form action="/admin/users/{{ u.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Permanently delete user and records?');">
+                        <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

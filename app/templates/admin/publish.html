@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Publish Asset Bundle - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Deploy Asset Bundle</h2>
+    <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 16px;">
+        Upload multiple source files (.lsp, .dcl, .shx, .dwg). The system builds a ZIP package with an internal package.json.
+    </p>
+
+    {% if success %}
+        <div class="alert" style="border-left-color: var(--success); font-weight: bold;">{{ success }}</div>
+    {% endif %}
+
+    <form action="/admin/publish" method="POST" enctype="multipart/form-data">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Asset ID (Unique Identifier, e.g. quick-layer-clean)</label>
+                <input type="text" name="asset_id" required>
+            </div>
+            <div>
+                <label>Slug (Storage & Download Directory)</label>
+                <input type="text" name="slug" required>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Display Name</label>
+                <input type="text" name="name" required>
+            </div>
+            <div>
+                <label>Category</label>
+                <select name="type">
+                    <option value="tool">Tool</option>
+                    <option value="block">Block</option>
+                    <option value="font">Font</option>
+                    <option value="pattern">Pattern</option>
+                </select>
+            </div>
+            <div>
+                <label>Version (e.g. 1.0.0)</label>
+                <input type="text" name="version" required>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Main Entry Point File (e.g. main.lsp)</label>
+                <input type="text" name="entry_point" placeholder="main.lsp" required>
+            </div>
+            <div>
+                <label>AutoCAD Command</label>
+                <input type="text" name="default_command" placeholder="e.g. QLC">
+            </div>
+            <div>
+                <label>Command Alias</label>
+                <input type="text" name="default_alias" placeholder="e.g. QC">
+            </div>
+        </div>
+
+        <label>Short Description (Catalog Summary)</label>
+        <input type="text" name="short_desc" required>
+
+        <label>Full Description (Documentation in Palette)</label>
+        <textarea name="full_desc" rows="3"></textarea>
+
+        <label>Release Notes (What's new in this version)</label>
+        <textarea name="release_notes" rows="3" placeholder="- Bug fixes&#10;- Improved compatibility"></textarea>
+
+        <div style="margin: 8px 0 16px 0;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" name="is_pro" style="width: auto; margin: 0;"> Requires Active Pro Subscription
+            </label>
+        </div>
+
+        <label>Search Tags (Comma separated)</label>
+        <input type="text" name="tags" placeholder="layer, purge, lisp">
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <h3>Source Files & Package Assets</h3>
+
+        <div style="margin-top: 12px;">
+            <label>Square Icon (PNG/JPG - automatically generates 32x32 and 64x64 formats)</label>
+            <input type="file" name="icon_file" accept="image/*">
+        </div>
+
+        <div style="margin-top: 12px;">
+            <label>Package Source Files (Select all required: .lsp, .dcl, .shx, .dwg)</label>
+            <input type="file" name="source_files" multiple required>
+            <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 12px;">Hold Ctrl / Shift to select multiple files simultaneously.</small>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <h3>Tutorial & Preview Media (Up to 3 items)</h3>
+
+        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 10px;">
+            <label>Media File 1 (Screenshot or MP4 Video)</label>
+            <input type="file" name="media_files" accept="image/*,video/*">
+            <input type="text" name="media_titles" placeholder="Media 1 Title (e.g. Workflow Overview)">
+            <input type="text" name="media_descriptions" placeholder="Media 1 Description/Caption">
+        </div>
+
+        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 10px;">
+            <label>Media File 2 (Screenshot or MP4 Video)</label>
+            <input type="file" name="media_files" accept="image/*,video/*">
+            <input type="text" name="media_titles" placeholder="Media 2 Title (e.g. Dialog Settings)">
+            <input type="text" name="media_descriptions" placeholder="Media 2 Description/Caption">
+        </div>
+
+        <button type="submit" class="btn btn-success" style="padding: 10px 24px; margin-top: 15px;">Build & Archive Package</button>
+    </form>
+</div>
+{% endblock %}

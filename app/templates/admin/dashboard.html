@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard - KAALK{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Admin Dashboard</h2>
+    <div>
+        <a href="/admin/publish" class="btn">Deploy New Asset Version</a>
+        <a href="/admin/users" class="btn" style="background: var(--surface-alt);">View Users</a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+    <div class="card" style="text-align: center;">
+        <p style="color: var(--muted); font-size: 0.85rem;">Total Users</p>
+        <h2 style="font-size: 2rem; margin-top: 6px;">{{ user_count }}</h2>
+    </div>
+    <div class="card" style="text-align: center;">
+        <p style="color: var(--muted); font-size: 0.85rem;">Pro Subscribers</p>
+        <h2 style="font-size: 2rem; margin-top: 6px; color: var(--accent);">{{ pro_count }}</h2>
+    </div>
+    <div class="card" style="text-align: center;">
+        <p style="color: var(--muted); font-size: 0.85rem;">Published Assets</p>
+        <h2 style="font-size: 2rem; margin-top: 6px;">{{ asset_count }}</h2>
+    </div>
+</div>
+{% endblock %}

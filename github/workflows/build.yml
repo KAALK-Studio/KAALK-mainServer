@@ -1,0 +1,59 @@
+name: Build and Package KAALK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Manual Release Version (e.g. 1.0.5)'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Architecture Boundaries
+        shell: cmd
+        run: |
+          if exist Check-Architecture.cmd call Check-Architecture.cmd
+
+      - name: Determine Version
+        id: get_version
+        shell: pwsh
+        run: |
+          $manual = "${{ github.event.inputs.version_tag }}"
+          if ($manual -ne "") {
+            $ver = $manual
+          } elseif (Test-Path "version.txt") {
+            $base = (Get-Content "version.txt").Trim()
+            $ver = "$base.${{ github.run_number }}"
+          } else {
+            $ver = "1.0.${{ github.run_number }}"
+          }
+          Write-Output "VERSION=$ver" >> $env:GITHUB_ENV
+          Write-Host "Configured build version: $ver"
+
+      - name: Compile AutoCAD Plugin
+        if: exist build/Build.ps1
+        shell: pwsh
+        run: |
+          ./build/Build.ps1 -Version "${{ env.VERSION }}" -Commit "${{ github.sha }}"
+
+      - name: Archive Distribution Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kaalk-platform-v${{ env.VERSION }}
+          path: dist/
+          retention-days: 90

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Edit User - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 600px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>Edit Account: {{ target_user.email }}</h2>
+        <a href="/admin/users" class="btn" style="background: var(--surface-alt);">Back</a>
+    </div>
+
+    {% if success %}
+        <div class="alert" style="border-left-color: var(--success); font-weight: bold;">{{ success }}</div>
+    {% endif %}
+
+    <form action="/admin/users/{{ target_user.id }}/edit" method="POST">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+                <label>First Name</label>
+                <input type="text" name="first_name" value="{{ target_user.first_name }}" required>
+            </div>
+            <div>
+                <label>Last Name</label>
+                <input type="text" name="last_name" value="{{ target_user.last_name }}" required>
+            </div>
+        </div>
+
+        <label>Email Address</label>
+        <input type="email" name="email" value="{{ target_user.email }}" required>
+
+        <label>Subscription Tier</label>
+        <select name="subscription_tier">
+            <option value="free" {% if target_user.subscription_tier == 'free' %}selected{% endif %}>Free Tier</option>
+            <option value="premium" {% if target_user.subscription_tier == 'premium' %}selected{% endif %}>Premium / Pro</option>
+        </select>
+
+        <label>Grant / Extend Subscription Days (From today)</label>
+        <input type="number" name="subscription_days" value="0">
+        <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 12px;">Enter number of days (e.g. 30, 90, 365). Enter 0 to keep current.</small>
+
+        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                <input type="checkbox" name="is_admin" style="width: auto;" {% if target_user.is_admin %}checked{% endif %}>
+                Administrator Privileges (Full Portal & Package Access)
+            </label>
+
+            <label style="display: block; cursor: pointer; color: var(--danger);">
+                <input type="checkbox" name="is_suspended" style="width: auto;" {% if target_user.is_suspended %}checked{% endif %}>
+                Suspend Account (Block Login and API Calls)
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%;">Save Changes</button>
+    </form>
+</div>
+{% endblock %}

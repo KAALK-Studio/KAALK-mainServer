@@ -11,14 +11,14 @@ def get_catalog(type: Optional[str] = Query(None)):
     conn = get_db()
     cursor = conn.cursor()
     query = """
-    SELECT id, slug, name, type, latest_version, min_autocad, short_desc,
-           thumb_url, is_pro, rating, dev_name, tags
+    SELECT id, slug, name, type, asset_status, latest_version, min_autocad, short_desc,
+           thumb_32_url, thumb_64_url, is_pro, rating, rating_count, dev_name, tags
     FROM assets
     """
     params = ()
     if type:
         query += " WHERE type = ?"
-        params = (type.lower(),)
+        params = (type.lower().strip(),)
 
     cursor.execute(query, params)
     rows = cursor.fetchall()
@@ -31,12 +31,15 @@ def get_catalog(type: Optional[str] = Query(None)):
             "slug": r["slug"],
             "name": r["name"],
             "type": r["type"],
+            "status": r["asset_status"] or "stable",
             "version": r["latest_version"] or "1.0.0",
             "min_autocad": r["min_autocad"],
             "short_desc": r["short_desc"] or "",
-            "thumb_url": r["thumb_url"] or "",
+            "thumb_32_url": r["thumb_32_url"] or "",
+            "thumb_64_url": r["thumb_64_url"] or "",
             "is_pro": bool(r["is_pro"]),
             "rating": r["rating"],
+            "rating_count": r["rating_count"],
             "dev": r["dev_name"] or "",
             "tags": r["tags"] or ""
         })
@@ -86,9 +89,16 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
     if not selected_version_data and version_history:
         selected_version_data = version_history[0]
 
-    # Latest 3 comments
-    cursor.execute("SELECT author, text, created_at FROM comments WHERE asset_id = ? ORDER BY id DESC LIMIT 3", (asset_id,))
+    # Retrieve latest comments with ratings
+    cursor.execute("""
+    SELECT author, text, rating, created_at 
+    FROM comments 
+    WHERE asset_id = ? 
+    ORDER BY id DESC 
+    LIMIT 5
+    """, (asset_id,))
     comment_rows = cursor.fetchall()
+    
     cursor.execute("SELECT COUNT(*) as count FROM comments WHERE asset_id = ?", (asset_id,))
     total_comments = cursor.fetchone()["count"]
     conn.close()
@@ -102,6 +112,8 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
         "id": asset["id"],
         "slug": asset["slug"],
         "name": asset["name"],
+        "type": asset["type"],
+        "status": asset["asset_status"] or "stable",
         "full_description": asset["full_desc"] or "",
         "default_command": asset["default_command"] or "",
         "default_alias": asset["default_alias"] or "",
@@ -111,8 +123,10 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
             "website": asset["dev_website"] or ""
         },
         "stats": {
+            "rating": asset["rating"],
             "rating_count": asset["rating_count"],
-            "download_count": asset["download_count"]
+            "download_count": asset["download_count"],
+            "monthly_downloads": asset["monthly_downloads"]
         },
         "versions": {
             "latest": asset["latest_version"] or "1.0.0",
@@ -129,7 +143,15 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
         "media": media_list,
         "comments_summary": {
             "total_count": total_comments,
-            "latest_comments": [dict(c) for c in comment_rows]
+            "latest_comments": [
+                {
+                    "author": c["author"],
+                    "text": c["text"],
+                    "rating": c["rating"],
+                    "created_at": c["created_at"]
+                }
+                for c in comment_rows
+            ]
         },
         "updated_at": asset["updated_at"]
     }

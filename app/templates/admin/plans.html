@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Manage Subscription Plans - KAALK Admin{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2>Subscription Plans & Pricing Setup</h2>
+        <p style="color: var(--muted); font-size: 0.85rem;">Modify costs, promotional discounts, expiration limits, and availability</p>
+    </div>
+</div>
+
+{% if success %}
+    <div class="alert" style="border-left-color: var(--success); font-weight: bold;">{{ success }}</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+    {% for plan in plans %}
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; {% if not plan.is_active %}opacity: 0.65;{% endif %}">
+        <form action="/admin/plans/{{ plan.id }}" method="POST">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="color: var(--accent);">{{ plan.name }}</h3>
+                <span class="badge {% if plan.is_active %}badge-pro{% else %}badge-free{% endif %}">
+                    {{ 'ACTIVE' if plan.is_active else 'DISABLED / HIDDEN' }}
+                </span>
+            </div>
+
+            <label>Plan Display Name</label>
+            <input type="text" name="name" value="{{ plan.name }}" required>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                    <label>Price (Tomans)</label>
+                    <input type="number" name="price_toman" value="{{ plan.price_toman }}" required>
+                </div>
+                <div>
+                    <label>Duration (Days)</label>
+                    <input type="number" name="duration_days" value="{{ plan.duration_days }}" required>
+                </div>
+            </div>
+
+            <label>Billing Cycle Tag (e.g. Monthly, Yearly, 90 Days)</label>
+            <input type="text" name="billing_cycle" value="{{ plan.billing_cycle }}" required>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                    <label>Discount Badge Text</label>
+                    <input type="text" name="discount_badge" value="{{ plan.discount_badge or '' }}" placeholder="e.g. Black Friday 30%">
+                </div>
+                <div>
+                    <label>Discount %</label>
+                    <input type="number" name="discount_percent" value="{{ plan.discount_percent or 0 }}">
+                </div>
+            </div>
+
+            <label>Discount Expiry Date (YYYY-MM-DDTHH:MM)</label>
+            <input type="text" name="discount_expires_at" value="{{ plan.discount_expires_at or '' }}" placeholder="2026-12-31T23:59:59">
+
+            <label>Description</label>
+            <textarea name="description" rows="2">{{ plan.description or '' }}</textarea>
+
+            <label>Features (One line per bullet)</label>
+            <textarea name="features" rows="4">{{ plan.features_text }}</textarea>
+
+            <div style="background: var(--surface-alt); padding: 10px; border-radius: 4px; margin-bottom: 14px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text);">
+                    <input type="checkbox" name="is_active" style="width: auto; margin: 0;" {% if plan.is_active %}checked{% endif %}>
+                    Enable & Display in Public Portal
+                </label>
+                {% if plan.id == 'enterprise' %}
+                    <small style="color: var(--muted); display: block; margin-top: 4px;">Enterprise plan stays unlisted until corporate infrastructure launch.</small>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-success" style="width: 100%;">Save Plan Parameters</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

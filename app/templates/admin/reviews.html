@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}User Reviews & Ratings - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>User Reviews & Feedback Intelligence</h2>
+        <span style="color: var(--muted); font-size: 0.85rem;">Total Feedback Items: {{ comments|length }}</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Asset</th>
+                <th>Author</th>
+                <th>Rating</th>
+                <th>Comment Content</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in comments %}
+            <tr>
+                <td style="font-size: 0.8rem; color: var(--muted); white-space: nowrap;">{{ c.created_at[:10] }}</td>
+                <td><strong style="color: var(--accent);">{{ c.asset_name }}</strong></td>
+                <td>{{ c.author }}</td>
+                <td>
+                    <span style="color: #ffb300; font-weight: bold;">{{ "★" * c.rating }}{{ "☆" * (5 - c.rating) }}</span>
+                    <span style="font-size: 0.75rem; color: var(--muted);">({{ c.rating }}/5)</span>
+                </td>
+                <td style="font-size: 0.85rem;">{{ c.text }}</td>
+                <td>
+                    <form action="/admin/reviews/{{ c.id }}/delete" method="POST" onsubmit="return confirm('Delete this comment?');">
+                        <button type="submit" class="btn-icon" style="color: var(--danger);" title="Remove Review">
+                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not comments %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: var(--muted); padding: 20px;">No user reviews recorded yet.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

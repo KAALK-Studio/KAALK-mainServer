@@ -5,6 +5,7 @@ class RegisterRequest(BaseModel):
     firstName: str
     lastName: str
     email: EmailStr
+    phone: str
     password: str
     newsletter: bool = False
 
@@ -22,4 +23,5 @@ class AuthResponse(BaseModel):
     expiresIn: int
     userName: str
     email: str
+    phone: str
     isPro: bool

@@ -1,29 +1,29 @@
 {% extends "base.html" %}
-{% block title %}Publish Asset Bundle - KAALK Admin{% endblock %}
+{% block title %}Publish Asset Package - KAALK Admin{% endblock %}
 {% block content %}
 <div class="card">
-    <h2>Deploy Asset Bundle</h2>
+    <h2>Publish / Update AutoCAD Asset</h2>
     <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 16px;">
-        Upload multiple source files (.lsp, .dcl, .shx, .dwg). The system builds a ZIP package with an internal package.json.
+        Deploy assets with automatic bundle packaging, SHA-256 calculation, and entry point resolution.
     </p>
 
     {% if success %}
         <div class="alert" style="border-left-color: var(--success); font-weight: bold;">{{ success }}</div>
     {% endif %}
 
-    <form action="/admin/publish" method="POST" enctype="multipart/form-data">
+    <form id="publishForm" action="/admin/publish" method="POST" enctype="multipart/form-data">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
-                <label>Asset ID (Unique Identifier, e.g. quick-layer-clean)</label>
+                <label>Asset ID (Unique Identifier, e.g. layer-sanitizer)</label>
                 <input type="text" name="asset_id" required>
             </div>
             <div>
-                <label>Slug (Storage & Download Directory)</label>
+                <label>Slug (Storage Path)</label>
                 <input type="text" name="slug" required>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px;">
             <div>
                 <label>Display Name</label>
                 <input type="text" name="name" required>
@@ -38,78 +38,212 @@
                 </select>
             </div>
             <div>
-                <label>Version (e.g. 1.0.0)</label>
+                <label>Asset Status</label>
+                <select name="asset_status">
+                    <option value="stable" selected>Stable</option>
+                    <option value="beta">Beta</option>
+                    <option value="rc">RC (Release Candidate)</option>
+                    <option value="alpha">Alpha</option>
+                </select>
+            </div>
+            <div>
+                <label>Version (e.g. 1.2.0)</label>
                 <input type="text" name="version" required>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
-                <label>Main Entry Point File (e.g. main.lsp)</label>
-                <input type="text" name="entry_point" placeholder="main.lsp" required>
-            </div>
-            <div>
-                <label>AutoCAD Command</label>
-                <input type="text" name="default_command" placeholder="e.g. QLC">
+                <label>AutoCAD Command Trigger</label>
+                <input type="text" name="default_command" placeholder="e.g. LYSAN">
             </div>
             <div>
                 <label>Command Alias</label>
-                <input type="text" name="default_alias" placeholder="e.g. QC">
+                <input type="text" name="default_alias" placeholder="e.g. LS">
             </div>
         </div>
 
-        <label>Short Description (Catalog Summary)</label>
+        <label>Short Description (Catalog Index)</label>
         <input type="text" name="short_desc" required>
 
-        <label>Full Description (Documentation in Palette)</label>
+        <label>Full Documentation</label>
         <textarea name="full_desc" rows="3"></textarea>
 
-        <label>Release Notes (What's new in this version)</label>
-        <textarea name="release_notes" rows="3" placeholder="- Bug fixes&#10;- Improved compatibility"></textarea>
+        <label>Release Notes</label>
+        <textarea name="release_notes" rows="2" placeholder="- Fixed viewport redraw issue"></textarea>
 
         <div style="margin: 8px 0 16px 0;">
             <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" name="is_pro" style="width: auto; margin: 0;"> Requires Active Pro Subscription
+                <input type="checkbox" name="is_pro" style="width: auto; margin: 0;"> Requires Active Pro Tier
             </label>
         </div>
 
-        <label>Search Tags (Comma separated)</label>
-        <input type="text" name="tags" placeholder="layer, purge, lisp">
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <!-- Dynamic Binary & Dependency Files Queue -->
+        <h3>Package Source & Dependency Files</h3>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select any .lsp, .vlx, .fas, .dll, .dcl, .dwg files. Choose which is the Main Entry Point.</p>
+
+        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+            <input type="file" id="sourcePicker" multiple>
+            <div id="sourcesQueue" style="margin-top: 10px;"></div>
+        </div>
+
+        <!-- Hidden input storing selected entry point filename -->
+        <input type="hidden" name="entry_point" id="selectedEntryPoint" required>
 
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
-        <h3>Source Files & Package Assets</h3>
+        <!-- Dynamic Unlimited Media Queue -->
+        <h3>Tutorial Media & Screenshots (Unlimited)</h3>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Add screenshots, workflow images, or MP4 demo videos.</p>
 
-        <div style="margin-top: 12px;">
+        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="file" id="mediaPicker" accept="image/*,video/*" style="margin-bottom: 0;">
+                <button type="button" class="btn" onclick="addMediaItem()">Queue Media</button>
+            </div>
+            <div id="mediaQueue" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <div>
             <label>Square Icon (PNG/JPG - automatically generates 32x32 and 64x64 formats)</label>
             <input type="file" name="icon_file" accept="image/*">
         </div>
 
-        <div style="margin-top: 12px;">
-            <label>Package Source Files (Select all required: .lsp, .dcl, .shx, .dwg)</label>
-            <input type="file" name="source_files" multiple required>
-            <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 12px;">Hold Ctrl / Shift to select multiple files simultaneously.</small>
-        </div>
-
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
-
-        <h3>Tutorial & Preview Media (Up to 3 items)</h3>
-
-        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 10px;">
-            <label>Media File 1 (Screenshot or MP4 Video)</label>
-            <input type="file" name="media_files" accept="image/*,video/*">
-            <input type="text" name="media_titles" placeholder="Media 1 Title (e.g. Workflow Overview)">
-            <input type="text" name="media_descriptions" placeholder="Media 1 Description/Caption">
-        </div>
-
-        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 10px;">
-            <label>Media File 2 (Screenshot or MP4 Video)</label>
-            <input type="file" name="media_files" accept="image/*,video/*">
-            <input type="text" name="media_titles" placeholder="Media 2 Title (e.g. Dialog Settings)">
-            <input type="text" name="media_descriptions" placeholder="Media 2 Description/Caption">
-        </div>
-
-        <button type="submit" class="btn btn-success" style="padding: 10px 24px; margin-top: 15px;">Build & Archive Package</button>
+        <button type="submit" class="btn btn-success" style="padding: 10px 24px; margin-top: 15px;">Build & Compile Bundle</button>
     </form>
 </div>
+
+<script>
+// Dynamic File Queue with Entry Point Auto-detection
+const sourcePicker = document.getElementById('sourcePicker');
+const sourcesQueue = document.getElementById('sourcesQueue');
+const entryPointInput = document.getElementById('selectedEntryPoint');
+let fileStore = new DataTransfer();
+
+sourcePicker.addEventListener('change', () => {
+    for (let file of sourcePicker.files) {
+        fileStore.items.add(file);
+    }
+    renderSources();
+    sourcePicker.value = '';
+});
+
+function renderSources() {
+    sourcesQueue.innerHTML = '';
+    const executableExts = ['.lsp', '.vlx', '.fas', '.dll'];
+    
+    Array.from(fileStore.files).forEach((file, index) => {
+        const ext = '.' + file.name.split('.').pop().toLowerCase();
+        const isExec = executableExts.includes(ext);
+
+        const row = document.createElement('div');
+        row.style = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px;';
+        
+        let radioHtml = isExec ? 
+            `<label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; margin: 0;">
+                <input type="radio" name="entry_choice" value="${file.name}" onchange="setEntryPoint('${file.name}')" ${entryPointInput.value === file.name || (index===0 && !entryPointInput.value) ? 'checked' : ''}>
+                Main Entry Point
+             </label>` : `<span style="font-size: 0.75rem; color: var(--muted);">Resource / Dependency</span>`;
+
+        if (isExec && (!entryPointInput.value || index === 0)) {
+            entryPointInput.value = file.name;
+        }
+
+        row.innerHTML = `
+            <div>
+                <strong>${file.name}</strong> 
+                <span style="color: var(--muted); font-size: 0.75rem; margin-left: 8px;">(${(file.size/1024).toFixed(1)} KB)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px;">
+                ${radioHtml}
+                <button type="button" onclick="removeSource(${index})" class="btn-icon" style="color: var(--danger);">✕</button>
+            </div>
+        `;
+        sourcesQueue.appendChild(row);
+    });
+}
+
+function setEntryPoint(name) {
+    entryPointInput.value = name;
+}
+
+function removeSource(index) {
+    const dt = new DataTransfer();
+    const files = Array.from(fileStore.files);
+    files.splice(index, 1);
+    files.forEach(f => dt.items.add(f));
+    fileStore = dt;
+    if (files.length === 0) entryPointInput.value = '';
+    renderSources();
+}
+
+// Unlimited Dynamic Media Queue
+const mediaPicker = document.getElementById('mediaPicker');
+const mediaQueue = document.getElementById('mediaQueue');
+let mediaStore = new DataTransfer();
+
+function addMediaItem() {
+    if (!mediaPicker.files || mediaPicker.files.length === 0) return;
+    const file = mediaPicker.files[0];
+    mediaStore.items.add(file);
+    
+    const idx = mediaStore.files.length - 1;
+    const card = document.createElement('div');
+    card.id = `media-item-${idx}`;
+    card.style = 'background: var(--surface); padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;';
+    card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; font-size: 0.85rem;">${file.name}</span>
+            <button type="button" onclick="removeMedia(${idx})" class="btn-icon" style="color: var(--danger);">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+            <input type="text" name="media_titles" placeholder="Media Title" style="margin-bottom: 0;">
+            <input type="text" name="media_descriptions" placeholder="Caption / Instructions" style="margin-bottom: 0;">
+        </div>
+    `;
+    mediaQueue.appendChild(card);
+    mediaPicker.value = '';
+}
+
+function removeMedia(idx) {
+    const el = document.getElementById(`media-item-${idx}`);
+    if (el) el.remove();
+}
+
+// Attach DataTransfer files before form submission
+document.getElementById('publishForm').addEventListener('submit', (e) => {
+    if (fileStore.files.length === 0) {
+        alert('Please add at least one source file.');
+        e.preventDefault();
+        return;
+    }
+    if (!entryPointInput.value) {
+        alert('Please select an executable file (.lsp, .vlx, .fas, .dll) as the Main Entry Point.');
+        e.preventDefault();
+        return;
+    }
+    
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.name = 'source_files';
+    fileInput.multiple = true;
+    fileInput.files = fileStore.files;
+    fileInput.style.display = 'none';
+    e.target.appendChild(fileInput);
+
+    if (mediaStore.files.length > 0) {
+        const mInput = document.createElement('input');
+        mInput.type = 'file';
+        mInput.name = 'media_files';
+        mInput.multiple = true;
+        mInput.files = mediaStore.files;
+        mInput.style.display = 'none';
+        e.target.appendChild(mInput);
+    }
+});
+</script>
 {% endblock %}

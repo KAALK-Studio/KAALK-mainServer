@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.db
+*.sqlite3
+storage/packages/*
+storage/media/*
+!storage/packages/.gitkeep
+!storage/media/.gitkeep
+dist/
+.pytest_cache/

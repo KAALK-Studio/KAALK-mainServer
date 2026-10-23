@@ -46,10 +46,13 @@ jobs:
           Write-Host "Configured build version: $ver"
 
       - name: Compile AutoCAD Plugin
-        if: exist build/Build.ps1
         shell: pwsh
         run: |
-          ./build/Build.ps1 -Version "${{ env.VERSION }}" -Commit "${{ github.sha }}"
+          if (Test-Path "build/Build.ps1") {
+            ./build/Build.ps1 -Version "${{ env.VERSION }}" -Commit "${{ github.sha }}"
+          } else {
+            Write-Host "Build.ps1 not found, skipping compilation."
+          }
 
       - name: Archive Distribution Artifacts
         uses: actions/upload-artifact@v4
@@ -57,3 +60,4 @@ jobs:
           name: kaalk-platform-v${{ env.VERSION }}
           path: dist/
           retention-days: 90
+          if-no-files-found: warn

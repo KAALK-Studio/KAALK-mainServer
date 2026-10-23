@@ -1,6 +1,3 @@
-# README.md
-
-```markdown
 # KAALK Asset Manager
 
 An enterprise-grade asset manager and store integration for **AutoCAD 2018+**, featuring an embedded WPF palette client and a lightweight, high-performance **FastAPI + SQLite** backend portal.
@@ -194,4 +191,3 @@ python run.py
 - **زبان کدنویسی**: تمام کامنت‌ها، نام متغیرها، رشته‌ها و فایل‌های پروژه باید منحصراً به زبان انگلیسی و بدون کاراکترهای تزئینی/ایموجی باشند.
 - **بررسی لایه‌ها**: قبل از هر Commit، اجرای اسکریپت `Check-Architecture.cmd` الزامی است.
 - **نسخه‌گذاری**: شماره نسخه پایه نرم‌افزار در فایل `version.txt` تعیین می‌شود.
-```

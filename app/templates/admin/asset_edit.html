@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Edit Asset - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 720px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>Edit Asset: {{ asset.name }}</h2>
+        <a href="/admin/assets" class="btn" style="background: var(--surface-alt);">Back to Assets</a>
+    </div>
+
+    {% if success %}
+        <div class="alert" style="border-left-color: var(--success); font-weight: bold;">{{ success }}</div>
+    {% endif %}
+
+    <form action="/admin/assets/{{ asset.id }}/edit" method="POST" enctype="multipart/form-data">
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Display Name</label>
+                <input type="text" name="name" value="{{ asset.name }}" required>
+            </div>
+            <div>
+                <label>Category</label>
+                <select name="type">
+                    <option value="tool" {% if asset.type == 'tool' %}selected{% endif %}>Tool</option>
+                    <option value="block" {% if asset.type == 'block' %}selected{% endif %}>Block</option>
+                    <option value="font" {% if asset.type == 'font' %}selected{% endif %}>Font</option>
+                    <option value="pattern" {% if asset.type == 'pattern' %}selected{% endif %}>Pattern</option>
+                </select>
+            </div>
+            <div>
+                <label>Asset Status</label>
+                <select name="asset_status">
+                    <option value="stable" {% if asset.asset_status == 'stable' %}selected{% endif %}>Stable</option>
+                    <option value="beta" {% if asset.asset_status == 'beta' %}selected{% endif %}>Beta</option>
+                    <option value="rc" {% if asset.asset_status == 'rc' %}selected{% endif %}>RC</option>
+                    <option value="alpha" {% if asset.asset_status == 'alpha' %}selected{% endif %}>Alpha</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Min AutoCAD Version</label>
+                <input type="number" name="min_autocad" value="{{ asset.min_autocad }}">
+            </div>
+            <div>
+                <label>Command Trigger</label>
+                <input type="text" name="default_command" value="{{ asset.default_command or '' }}">
+            </div>
+            <div>
+                <label>Command Alias</label>
+                <input type="text" name="default_alias" value="{{ asset.default_alias or '' }}">
+            </div>
+        </div>
+
+        <label>Short Description (Catalog Summary)</label>
+        <input type="text" name="short_desc" value="{{ asset.short_desc or '' }}" required>
+
+        <label>Full Documentation</label>
+        <textarea name="full_desc" rows="4">{{ asset.full_desc or '' }}</textarea>
+
+        <label>Tags (Comma separated)</label>
+        <input type="text" name="tags" value="{{ asset.tags or '' }}">
+
+        <div style="background: var(--surface-alt); padding: 14px; border-radius: 4px; margin: 15px 0;">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text); font-size: 0.95rem; font-weight: bold;">
+                <input type="checkbox" name="is_pro" style="width: auto; margin: 0;" {% if asset.is_pro %}checked{% endif %}>
+                Requires Active Pro Subscription (Uncheck to make this tool completely FREE)
+            </label>
+        </div>
+
+        <div>
+            <label>Replace Square Icon (Optional - Generates 32x32 and 64x64 PNGs)</label>
+            <input type="file" name="icon_file" accept="image/*">
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">Save Changes</button>
+    </form>
+</div>
+{% endblock %}

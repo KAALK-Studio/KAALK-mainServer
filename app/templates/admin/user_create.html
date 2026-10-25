@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Create User - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 600px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>Create New User Account</h2>
+        <a href="/admin/users" class="btn" style="background: var(--surface-alt);">Back</a>
+    </div>
+
+    {% if error %}
+        <div class="alert" style="border-left-color: var(--danger); font-weight: bold;">{{ error }}</div>
+    {% endif %}
+
+    <form action="/admin/users/create" method="POST">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+                <label>First Name</label>
+                <input type="text" name="first_name" required>
+            </div>
+            <div>
+                <label>Last Name</label>
+                <input type="text" name="last_name" required>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Email Address</label>
+                <input type="email" name="email" required>
+            </div>
+            <div>
+                <label>Phone Number (Mobile)</label>
+                <input type="tel" name="phone" placeholder="0912..." required>
+            </div>
+        </div>
+
+        <label>Account Password</label>
+        <input type="password" name="password" required>
+
+        <label>Subscription Tier</label>
+        <select name="subscription_tier">
+            <option value="free" selected>Free Tier</option>
+            <option value="premium">Premium / Pro</option>
+        </select>
+
+        <label>Subscription Validity (Days)</label>
+        <input type="number" name="subscription_days" value="30">
+        <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 12px;">Number of days from today if setting to Premium.</small>
+
+        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 8px; cursor: pointer;">
+                <input type="checkbox" name="is_admin" style="width: auto;">
+                Grant Administrator Privileges
+            </label>
+
+            <label style="display: block; cursor: pointer; color: var(--danger);">
+                <input type="checkbox" name="is_suspended" style="width: auto;">
+                Suspend Immediately (Block access)
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%;">Create Account</button>
+    </form>
+</div>
+{% endblock %}

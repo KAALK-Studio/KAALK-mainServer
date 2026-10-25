@@ -23,8 +23,16 @@
             </div>
         </div>
 
-        <label>Email Address</label>
-        <input type="email" name="email" value="{{ target_user.email }}" required>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Email Address</label>
+                <input type="email" name="email" value="{{ target_user.email }}" required>
+            </div>
+            <div>
+                <label>Phone Number (Mobile)</label>
+                <input type="tel" name="phone" value="{{ target_user.phone or '' }}" required>
+            </div>
+        </div>
 
         <label>Subscription Tier</label>
         <select name="subscription_tier">
@@ -34,7 +42,7 @@
 
         <label>Grant / Extend Subscription Days (From today)</label>
         <input type="number" name="subscription_days" value="0">
-        <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 12px;">Enter number of days (e.g. 30, 90, 365). Enter 0 to keep current.</small>
+        <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 12px;">Enter number of days (e.g. 30, 90, 365). Enter 0 to keep current expiration.</small>
 
         <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 16px;">
             <label style="display: block; margin-bottom: 8px; cursor: pointer;">

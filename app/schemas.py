@@ -1,3 +1,4 @@
+# app/schemas.py
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 
@@ -25,3 +26,10 @@ class AuthResponse(BaseModel):
     email: str
     phone: str
     isPro: bool
+
+class CommentCreateRequest(BaseModel):
+    author: Optional[str] = "You"
+    text: str
+
+class RatingCreateRequest(BaseModel):
+    rating: int

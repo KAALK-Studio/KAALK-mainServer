@@ -3,7 +3,7 @@
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2>Asset Management</h2>
-    <a href="/admin/publish" class="btn btn-success">Publish New Asset</a>
+    <a href="/admin/publish" class="btn btn-success">+ Publish New Asset</a>
 </div>
 
 <div class="card">
@@ -13,16 +13,17 @@
                 <th>Icon</th>
                 <th>Name & ID</th>
                 <th>Type</th>
+                <th>Status</th>
                 <th>Active Version</th>
-                <th>Total Versions</th>
-                <th>Pro Plan</th>
-                <th>Actions</th>
+                <th>Versions</th>
+                <th>Plan Tier</th>
+                <th style="text-align: center;">Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for a in assets %}
             <tr>
-                <td style="width: 50px;">
+                <td style="width: 48px;">
                     {% if a.thumb_32_url %}
                         <img src="{{ a.thumb_32_url }}" width="32" height="32" style="border-radius: 4px; display: block;">
                     {% else %}
@@ -34,6 +35,9 @@
                     <div style="color: var(--muted); font-size: 0.75rem;">{{ a.id }}</div>
                 </td>
                 <td>{{ a.type }}</td>
+                <td>
+                    <span class="badge badge-{{ a.asset_status or 'stable' }}">{{ (a.asset_status or 'stable')|upper }}</span>
+                </td>
                 <td>{{ a.latest_version or 'None' }}</td>
                 <td>{{ a.version_count }}</td>
                 <td>
@@ -43,10 +47,15 @@
                         <span class="badge badge-free">FREE</span>
                     {% endif %}
                 </td>
-                <td>
-                    <a href="/admin/assets/{{ a.id }}/versions" class="btn" style="padding: 4px 8px; font-size: 0.75rem;">Manage Versions</a>
-                    <form action="/admin/assets/{{ a.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Delete this entire asset and all associated files?');">
-                        <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;">Delete</button>
+                <td style="text-align: center; white-space: nowrap;">
+                    <a href="/admin/assets/{{ a.id }}/edit" class="btn-icon" title="Edit Asset Info / Pro Status" style="color: var(--accent); margin-right: 4px;">
+                        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    </a>
+                    <a href="/admin/assets/{{ a.id }}/versions" class="btn" style="padding: 4px 8px; font-size: 0.75rem;">Versions</a>
+                    <form action="/admin/assets/{{ a.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Permanently delete asset and files?');">
+                        <button type="submit" class="btn-icon" title="Delete Asset" style="color: var(--danger);">
+                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
                     </form>
                 </td>
             </tr>

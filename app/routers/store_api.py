@@ -1,8 +1,10 @@
+# app/routers/store_api.py
 import json
 import datetime
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, status
 from app.database import get_db
+from app.schemas import CommentCreateRequest, RatingCreateRequest
 
 router = APIRouter(prefix="/api/v1", tags=["AutoCAD Store API"])
 
@@ -11,8 +13,8 @@ def get_catalog(type: Optional[str] = Query(None)):
     conn = get_db()
     cursor = conn.cursor()
     query = """
-    SELECT id, slug, name, type, asset_status, latest_version, min_autocad, short_desc,
-           thumb_32_url, thumb_64_url, is_pro, rating, rating_count, dev_name, tags
+    SELECT id, slug, name, type, latest_version, min_autocad, short_desc,
+           thumb_32_url, thumb_64_url, is_pro, rating, dev_name, tags
     FROM assets
     """
     params = ()
@@ -26,27 +28,26 @@ def get_catalog(type: Optional[str] = Query(None)):
 
     assets = []
     for r in rows:
+        thumb_url = r["thumb_64_url"] or r["thumb_32_url"] or f"/static/media/{r['slug']}/icon_64.png"
+
         assets.append({
             "id": r["id"],
             "slug": r["slug"],
             "name": r["name"],
             "type": r["type"],
-            "status": r["asset_status"] or "stable",
             "version": r["latest_version"] or "1.0.0",
             "min_autocad": r["min_autocad"],
             "short_desc": r["short_desc"] or "",
-            "thumb_32_url": r["thumb_32_url"] or "",
-            "thumb_64_url": r["thumb_64_url"] or "",
+            "thumb_url": thumb_url,
             "is_pro": bool(r["is_pro"]),
-            "rating": r["rating"],
-            "rating_count": r["rating_count"],
-            "dev": r["dev_name"] or "",
+            "rating": float(r["rating"]) if r["rating"] else 5.0,
+            "dev": r["dev_name"] or "KAALK Studio",
             "tags": r["tags"] or ""
         })
 
     return {
         "catalog_version": "1.0",
-        "generated_at": datetime.datetime.utcnow().isoformat(),
+        "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
         "total_assets": len(assets),
         "assets": assets
     }
@@ -62,7 +63,6 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
         conn.close()
         raise HTTPException(status_code=404, detail="Asset not found.")
 
-    # Retrieve all versions for this asset
     cursor.execute("""
     SELECT version, release_notes, download_url, file_size, sha256, created_at
     FROM asset_versions WHERE asset_id = ? ORDER BY id DESC
@@ -89,13 +89,12 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
     if not selected_version_data and version_history:
         selected_version_data = version_history[0]
 
-    # Retrieve latest comments with ratings
     cursor.execute("""
-    SELECT author, text, rating, created_at 
+    SELECT author, text, created_at 
     FROM comments 
     WHERE asset_id = ? 
     ORDER BY id DESC 
-    LIMIT 5
+    LIMIT 10
     """, (asset_id,))
     comment_rows = cursor.fetchall()
     
@@ -112,25 +111,21 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
         "id": asset["id"],
         "slug": asset["slug"],
         "name": asset["name"],
-        "type": asset["type"],
-        "status": asset["asset_status"] or "stable",
         "full_description": asset["full_desc"] or "",
         "default_command": asset["default_command"] or "",
         "default_alias": asset["default_alias"] or "",
         "developer": {
-            "id": asset["dev_id"] or "",
-            "name": asset["dev_name"] or "",
-            "website": asset["dev_website"] or ""
+            "id": asset["dev_id"] or "dev_kaalk",
+            "name": asset["dev_name"] or "KAALK Studio",
+            "website": asset["dev_website"] or "https://kaalk.ir"
         },
         "stats": {
-            "rating": asset["rating"],
             "rating_count": asset["rating_count"],
-            "download_count": asset["download_count"],
-            "monthly_downloads": asset["monthly_downloads"]
+            "download_count": asset["download_count"]
         },
         "versions": {
             "latest": asset["latest_version"] or "1.0.0",
-            "selected": selected_version_data["version"] if selected_version_data else "1.0.0",
+            "selected": selected_version_data["version"] if selected_version_data else (asset["latest_version"] or "1.0.0"),
             "available": [v["version"] for v in version_history]
         },
         "package": {
@@ -147,7 +142,6 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
                 {
                     "author": c["author"],
                     "text": c["text"],
-                    "rating": c["rating"],
                     "created_at": c["created_at"]
                 }
                 for c in comment_rows
@@ -155,3 +149,54 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
         },
         "updated_at": asset["updated_at"]
     }
+
+# اندپوینت جدید: ثبت کامنت
+@router.post("/assets/{asset_id}/comments", status_code=status.HTTP_201_CREATED)
+def post_asset_comment(asset_id: str, payload: CommentCreateRequest):
+    if not payload.text or not payload.text.strip():
+        raise HTTPException(status_code=400, detail="Comment text cannot be empty.")
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM assets WHERE id = ?", (asset_id,))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Asset not found.")
+
+    now = datetime.datetime.utcnow().isoformat()
+    cursor.execute("""
+    INSERT INTO comments (asset_id, author, text, rating, created_at)
+    VALUES (?, ?, ?, 5, ?)
+    """, (asset_id, payload.author.strip() if payload.author else "You", payload.text.strip(), now))
+    
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": "Comment posted successfully."}
+
+# اندپوینت جدید: ثبت امتیاز و محاسبه میانگین
+@router.post("/assets/{asset_id}/ratings")
+def post_asset_rating(asset_id: str, payload: RatingCreateRequest):
+    if payload.rating < 1 or payload.rating > 5:
+        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT rating, rating_count FROM assets WHERE id = ?", (asset_id,))
+    asset = cursor.fetchone()
+    if not asset:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Asset not found.")
+
+    current_rating = asset["rating"] or 5.0
+    current_count = asset["rating_count"] or 0
+
+    new_count = current_count + 1
+    new_rating = ((current_rating * current_count) + payload.rating) / new_count
+
+    cursor.execute("""
+    UPDATE assets SET rating = ?, rating_count = ? WHERE id = ?
+    """, (round(new_rating, 1), new_count, asset_id))
+
+    conn.commit()
+    conn.close()
+    return {"success": True, "rating": round(new_rating, 1), "rating_count": new_count}

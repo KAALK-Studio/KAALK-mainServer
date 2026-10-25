@@ -3,8 +3,11 @@
 {% block content %}
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2>User Management</h2>
-        <span style="color: var(--muted); font-size: 0.85rem;">Total Accounts: {{ users|length }}</span>
+        <div>
+            <h2>User Management</h2>
+            <span style="color: var(--muted); font-size: 0.85rem;">Total Accounts: {{ users|length }}</span>
+        </div>
+        <a href="/admin/users/create" class="btn btn-success">+ Create New User</a>
     </div>
 
     <table>
@@ -52,14 +55,12 @@
                 </td>
                 <td style="font-family: monospace; font-size: 0.8rem; color: var(--muted);">{{ u.last_ip or '127.0.0.1' }}</td>
                 <td style="text-align: center; white-space: nowrap;">
-                    <!-- SVG Edit Button -->
                     <a href="/admin/users/{{ u.id }}/edit" class="btn-icon" title="Edit User Account" style="color: var(--accent); margin-right: 6px;">
                         <svg viewBox="0 0 24 24">
                             <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                         </svg>
                     </a>
                     
-                    <!-- SVG Delete Button -->
                     <form action="/admin/users/{{ u.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Permanently delete user and records?');">
                         <button type="submit" class="btn-icon" title="Delete User Account" style="color: var(--danger);">
                             <svg viewBox="0 0 24 24">

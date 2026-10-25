@@ -1,3 +1,4 @@
+# app/routers/admin.py
 import os
 import json
 import datetime
@@ -17,7 +18,7 @@ def require_admin(request: Request):
         raise HTTPException(status_code=403, detail="Admin privileges required.")
     return user
 
-# --- Dashboard & Business Intelligence ---
+# --- Dashboard & Intelligence ---
 
 @router.get("", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
@@ -104,7 +105,7 @@ def admin_dashboard(request: Request):
         }
     )
 
-# --- User Management (List, Create, Edit, Delete) ---
+# --- User Management ---
 
 @router.get("/users", response_class=HTMLResponse)
 def users_list(request: Request):
@@ -252,7 +253,7 @@ def delete_user_action(request: Request, user_id: int):
 
     return RedirectResponse("/admin/users", status_code=302)
 
-# --- Asset Management & Editing ---
+# --- Asset Management ---
 
 @router.get("/assets", response_class=HTMLResponse)
 def assets_list(request: Request):
@@ -287,26 +288,45 @@ def edit_asset_page(request: Request, asset_id: str):
     if not target_asset:
         raise HTTPException(status_code=404, detail="Asset not found.")
 
+    asset_dict = dict(target_asset)
+    try:
+        raw_media = json.loads(asset_dict.get("media_json") or "[]")
+    except Exception:
+        raw_media = []
+
+    media_items = []
+    for m in raw_media:
+        m_copy = dict(m)
+        url = m_copy.get("media_url") or ""
+        m_copy["display_filename"] = url.split('/')[-1] if url else "Media File"
+        media_items.append(m_copy)
+
+    asset_dict["media_items"] = media_items
+
     return templates.TemplateResponse(
         request=request,
         name="admin/asset_edit.html",
-        context={"request": request, "user": user, "asset": target_asset, "success": None}
+        context={"request": request, "user": user, "asset": asset_dict, "success": None}
     )
 
 @router.post("/assets/{asset_id}/edit", response_class=HTMLResponse)
-def update_asset_action(request: Request,
-                        asset_id: str,
-                        name: str = Form(...),
-                        type: str = Form(...),
-                        asset_status: str = Form("stable"),
-                        min_autocad: int = Form(2018),
-                        short_desc: str = Form(""),
-                        full_desc: str = Form(""),
-                        default_command: str = Form(""),
-                        default_alias: str = Form(""),
-                        tags: str = Form(""),
-                        is_pro: bool = Form(False),
-                        icon_file: Optional[UploadFile] = File(None)):
+async def update_asset_action(request: Request,
+                              asset_id: str,
+                              name: str = Form(...),
+                              type: str = Form(...),
+                              asset_status: str = Form("stable"),
+                              min_autocad: int = Form(2018),
+                              short_desc: str = Form(""),
+                              full_desc: str = Form(""),
+                              default_command: str = Form(""),
+                              default_alias: str = Form(""),
+                              tags: str = Form(""),
+                              is_pro: bool = Form(False),
+                              media_json_payload: str = Form("[]"),
+                              icon_file: Optional[UploadFile] = File(None),
+                              new_media_files: List[UploadFile] = File([]),
+                              new_media_titles: List[str] = Form([]),
+                              new_media_descriptions: List[str] = Form([])):
     user = require_admin(request)
     conn = get_db()
     cursor = conn.cursor()
@@ -317,32 +337,53 @@ def update_asset_action(request: Request,
         conn.close()
         raise HTTPException(status_code=404, detail="Asset not found.")
 
+    slug = existing["slug"]
     thumb_32 = existing["thumb_32_url"]
     thumb_64 = existing["thumb_64_url"]
 
     if icon_file and icon_file.filename:
-        thumb_32, thumb_64 = PackageService.process_icon(existing["slug"], icon_file)
+        thumb_32, thumb_64 = PackageService.process_icon(slug, icon_file)
+
+    try:
+        updated_media = json.loads(media_json_payload)
+    except Exception:
+        updated_media = []
+
+    if new_media_files and len(new_media_files) > 0 and new_media_files[0].filename:
+        added_media = PackageService.save_media_items(slug, new_media_files, new_media_titles, new_media_descriptions)
+        updated_media.extend(added_media)
 
     now = datetime.datetime.utcnow().isoformat()
     cursor.execute("""
     UPDATE assets SET
         name = ?, type = ?, asset_status = ?, min_autocad = ?,
         short_desc = ?, full_desc = ?, default_command = ?, default_alias = ?,
-        tags = ?, is_pro = ?, thumb_32_url = ?, thumb_64_url = ?, updated_at = ?
+        tags = ?, is_pro = ?, thumb_32_url = ?, thumb_64_url = ?,
+        media_json = ?, updated_at = ?
     WHERE id = ?
     """, (name.strip(), type.strip(), asset_status.strip(), min_autocad,
           short_desc.strip(), full_desc.strip(), default_command.strip(), default_alias.strip(),
-          tags.strip(), 1 if is_pro else 0, thumb_32, thumb_64, now, asset_id))
+          tags.strip(), 1 if is_pro else 0, thumb_32, thumb_64,
+          json.dumps(updated_media), now, asset_id))
 
     conn.commit()
     cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
-    updated_asset = cursor.fetchone()
+    updated_asset = dict(cursor.fetchone())
     conn.close()
+
+    media_items = []
+    for m in updated_media:
+        m_copy = dict(m)
+        url = m_copy.get("media_url") or ""
+        m_copy["display_filename"] = url.split('/')[-1] if url else "Media File"
+        media_items.append(m_copy)
+
+    updated_asset["media_items"] = media_items
 
     return templates.TemplateResponse(
         request=request,
         name="admin/asset_edit.html",
-        context={"request": request, "user": user, "asset": updated_asset, "success": "Asset details and Pro/Free access level updated successfully."}
+        context={"request": request, "user": user, "asset": updated_asset, "success": "Asset updated successfully."}
     )
 
 @router.get("/assets/{asset_id}/versions", response_class=HTMLResponse)
@@ -398,7 +439,7 @@ def delete_asset_action(request: Request, asset_id: str):
     conn.close()
     return RedirectResponse("/admin/assets", status_code=302)
 
-# --- Asset Publishing ---
+# --- Publishing ---
 
 @router.get("/publish", response_class=HTMLResponse)
 def publish_page(request: Request):
@@ -487,10 +528,10 @@ async def publish_action(request: Request,
     return templates.TemplateResponse(
         request=request,
         name="admin/publish.html",
-        context={"request": request, "user": user, "success": f"Asset '{name}' (Status: {asset_status.upper()}) Version {version} published successfully with entry point '{entry_point}'."}
+        context={"request": request, "user": user, "success": f"Asset '{name}' published successfully."}
     )
 
-# --- Subscription Plans Management ---
+# --- Plans ---
 
 @router.get("/plans", response_class=HTMLResponse)
 def plans_page(request: Request):
@@ -558,7 +599,7 @@ def update_plan_action(request: Request,
         context={"request": request, "user": user, "plans": formatted, "success": f"Plan '{name}' successfully updated."}
     )
 
-# --- Reviews & Feedback Moderation ---
+# --- Reviews ---
 
 @router.get("/reviews", response_class=HTMLResponse)
 def reviews_page(request: Request):
@@ -566,18 +607,29 @@ def reviews_page(request: Request):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-    SELECT c.*, a.name as asset_name
+    SELECT c.id, c.asset_id, c.author, c.text, c.rating, c.created_at, COALESCE(a.name, c.asset_id) as asset_name
     FROM comments c
-    JOIN assets a ON c.asset_id = a.id
+    LEFT JOIN assets a ON c.asset_id = a.id
     ORDER BY c.id DESC
     """)
-    comments = cursor.fetchall()
+    rows = cursor.fetchall()
     conn.close()
+
+    formatted_comments = []
+    for r in rows:
+        item = dict(r)
+        item["created_at_short"] = str(item.get("created_at") or "")[:10]
+        r_val = item.get("rating")
+        try:
+            item["rating_int"] = int(r_val) if (r_val is not None and int(r_val) > 0) else None
+        except (ValueError, TypeError):
+            item["rating_int"] = None
+        formatted_comments.append(item)
 
     return templates.TemplateResponse(
         request=request,
         name="admin/reviews.html",
-        context={"request": request, "user": user, "comments": comments}
+        context={"request": request, "user": user, "comments": formatted_comments}
     )
 
 @router.post("/reviews/{comment_id}/delete")

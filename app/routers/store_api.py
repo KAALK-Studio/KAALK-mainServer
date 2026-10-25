@@ -29,8 +29,7 @@ def get_catalog(type: Optional[str] = Query(None)):
     assets = []
     for r in rows:
         thumb_url = r["thumb_64_url"] or r["thumb_32_url"] or f"/static/media/{r['slug']}/icon_64.png"
-
-        rating_val = float(r["rating"]) if (r["rating_count"] and r["rating_count"] > 0 and r["rating"] is not None) else None
+        rating_val = float(r["rating"]) if (r["rating_count"] and r["rating_count"] > 0 and r["rating"] is not None) else 0.0
 
         assets.append({
             "id": r["id"],
@@ -157,34 +156,63 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
 def post_asset_review(asset_id: str, payload: ReviewSubmissionRequest):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, rating, rating_count FROM assets WHERE id = ?", (asset_id,))
+    cursor.execute("SELECT id FROM assets WHERE id = ?", (asset_id,))
     asset = cursor.fetchone()
     if not asset:
         conn.close()
         raise HTTPException(status_code=404, detail="Asset not found.")
 
+    user_id = None
+    if payload.email and payload.email.strip():
+        cursor.execute("SELECT id FROM users WHERE email = ?", (payload.email.strip().lower(),))
+        user_row = cursor.fetchone()
+        if user_row:
+            user_id = user_row["id"]
+
     now = datetime.datetime.utcnow().isoformat()
     submitted_rating = payload.rating if (payload.rating and 1 <= payload.rating <= 5) else None
+    author_name = payload.author.strip() if payload.author else "You"
 
+    existing_comment = None
+    if user_id:
+        cursor.execute("SELECT id FROM comments WHERE asset_id = ? AND user_id = ?", (asset_id, user_id))
+        existing_comment = cursor.fetchone()
+    if not existing_comment and payload.email:
+        cursor.execute("SELECT id FROM comments WHERE asset_id = ? AND author = ?", (asset_id, payload.email.strip()))
+        existing_comment = cursor.fetchone()
+    if not existing_comment and author_name != "You":
+        cursor.execute("SELECT id FROM comments WHERE asset_id = ? AND author = ?", (asset_id, author_name))
+        existing_comment = cursor.fetchone()
+
+    if existing_comment:
+        cursor.execute("""
+        UPDATE comments SET text = ?, rating = ?, created_at = ?, user_id = COALESCE(?, user_id), author = ?
+        WHERE id = ?
+        """, (payload.text.strip(), submitted_rating, now, user_id, author_name, existing_comment["id"]))
+    else:
+        cursor.execute("""
+        INSERT INTO comments (asset_id, user_id, author, text, rating, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (asset_id, user_id, author_name, payload.text.strip(), submitted_rating, now))
+
+    # Calculate real mathematical average without duplicating count
     cursor.execute("""
-    INSERT INTO comments (asset_id, author, text, rating, created_at)
-    VALUES (?, ?, ?, ?, ?)
-    """, (asset_id, payload.author.strip() if payload.author else "You", payload.text.strip(), submitted_rating, now))
+    SELECT AVG(rating) as avg_rating, COUNT(rating) as count_rating 
+    FROM comments 
+    WHERE asset_id = ? AND rating IS NOT NULL AND rating > 0
+    """, (asset_id,))
+    stats_row = cursor.fetchone()
+    calc_rating = round(float(stats_row["avg_rating"]), 1) if (stats_row and stats_row["avg_rating"] is not None) else 0.0
+    calc_count = int(stats_row["count_rating"]) if (stats_row and stats_row["count_rating"] is not None) else 0
 
-    if submitted_rating is not None:
-        current_rating = asset["rating"] or 0.0
-        current_count = asset["rating_count"] or 0
-        new_count = current_count + 1
-        new_rating = ((current_rating * current_count) + submitted_rating) / new_count
-        cursor.execute("UPDATE assets SET rating = ?, rating_count = ? WHERE id = ?",
-                       (round(new_rating, 1), new_count, asset_id))
+    cursor.execute("UPDATE assets SET rating = ?, rating_count = ? WHERE id = ?", (calc_rating, calc_count, asset_id))
 
     conn.commit()
     conn.close()
-    return {"success": True, "message": "Review submitted successfully."}
+    return {"success": True, "message": "Review recorded successfully.", "rating": calc_rating, "rating_count": calc_count}
 
 @router.get("/user/reviews")
-def get_user_reviews(email: Optional[str] = Query(None)):
+def get_user_reviews(email: Optional[str] = Query(None), author: Optional[str] = Query(None)):
     conn = get_db()
     cursor = conn.cursor()
 
@@ -193,13 +221,23 @@ def get_user_reviews(email: Optional[str] = Query(None)):
     FROM comments c
     JOIN assets a ON c.asset_id = a.id
     """
-    params = ()
-    if email:
-        query += " WHERE c.author = ? OR c.user_id IN (SELECT id FROM users WHERE email = ?)"
-        params = (email, email)
+    conditions = []
+    params = []
+
+    if email and email.strip():
+        clean_email = email.strip().lower()
+        conditions.append("(c.user_id IN (SELECT id FROM users WHERE email = ?) OR c.author = ?)")
+        params.extend([clean_email, clean_email])
+
+    if author and author.strip() and author != "You":
+        conditions.append("c.author = ?")
+        params.append(author.strip())
+
+    if conditions:
+        query += " WHERE " + " OR ".join(conditions)
 
     query += " ORDER BY c.id DESC LIMIT 50"
-    cursor.execute(query, params)
+    cursor.execute(query, tuple(params))
     rows = cursor.fetchall()
     conn.close()
 
@@ -220,7 +258,22 @@ def get_user_reviews(email: Optional[str] = Query(None)):
 def delete_user_review(review_id: int):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM comments WHERE id = ?", (review_id,))
+    cursor.execute("SELECT asset_id FROM comments WHERE id = ?", (review_id,))
+    row = cursor.fetchone()
+    if row:
+        asset_id = row["asset_id"]
+        cursor.execute("DELETE FROM comments WHERE id = ?", (review_id,))
+
+        cursor.execute("""
+        SELECT AVG(rating) as avg_rating, COUNT(rating) as count_rating 
+        FROM comments 
+        WHERE asset_id = ? AND rating IS NOT NULL AND rating > 0
+        """, (asset_id,))
+        stats_row = cursor.fetchone()
+        calc_rating = round(float(stats_row["avg_rating"]), 1) if (stats_row and stats_row["avg_rating"] is not None) else 0.0
+        calc_count = int(stats_row["count_rating"]) if (stats_row and stats_row["count_rating"] is not None) else 0
+        cursor.execute("UPDATE assets SET rating = ?, rating_count = ? WHERE id = ?", (calc_rating, calc_count, asset_id))
+
     conn.commit()
     conn.close()
     return {"success": True}

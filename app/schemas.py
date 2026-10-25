@@ -29,5 +29,6 @@ class AuthResponse(BaseModel):
 
 class ReviewSubmissionRequest(BaseModel):
     author: Optional[str] = "You"
+    email: Optional[str] = ""
     text: str
     rating: Optional[int] = None

@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Edit Asset - KAALK Admin{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 720px; margin: auto;">
+<div class="card" style="max-width: 760px; margin: auto;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <h2>Edit Asset: {{ asset.name }}</h2>
         <a href="/admin/assets" class="btn" style="background: var(--surface-alt);">Back to Assets</a>
     </div>
 
     {% if success %}
-        <div class="alert" style="border-left-color: var(--success); font-weight: bold;">{{ success }}</div>
+        <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 15px;">{{ success }}</div>
     {% endif %}
 
-    <form action="/admin/assets/{{ asset.id }}/edit" method="POST" enctype="multipart/form-data">
+    <form id="editAssetForm" action="/admin/assets/{{ asset.id }}/edit" method="POST" enctype="multipart/form-data">
         <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
             <div>
                 <label>Display Name</label>
@@ -52,7 +52,7 @@
             </div>
         </div>
 
-        <label>Short Description (Catalog Summary)</label>
+        <label>Short Description (Catalog Index)</label>
         <input type="text" name="short_desc" value="{{ asset.short_desc or '' }}" required>
 
         <label>Full Documentation</label>
@@ -61,19 +61,110 @@
         <label>Tags (Comma separated)</label>
         <input type="text" name="tags" value="{{ asset.tags or '' }}">
 
-        <div style="background: var(--surface-alt); padding: 14px; border-radius: 4px; margin: 15px 0;">
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text); font-size: 0.95rem; font-weight: bold;">
+        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin: 15px 0;">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text); font-weight: bold;">
                 <input type="checkbox" name="is_pro" style="width: auto; margin: 0;" {% if asset.is_pro %}checked{% endif %}>
                 Requires Active Pro Subscription (Uncheck to make this tool completely FREE)
             </label>
         </div>
 
         <div>
-            <label>Replace Square Icon (Optional - Generates 32x32 and 64x64 PNGs)</label>
+            <label>Replace Square Icon (Optional - Re-generates 32x32 and 64x64 PNG formats)</label>
             <input type="file" name="icon_file" accept="image/*">
         </div>
 
-        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">Save Changes</button>
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <!-- Manage Existing Media -->
+        <h3>Manage Tutorial Media & Screenshots</h3>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Update titles, descriptions or delete existing media.</p>
+
+        <div id="existingMediaContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+            {% for m in asset.media_items %}
+            <div class="existing-media-row" data-id="{{ m.id }}" data-url="{{ m.media_url }}" data-thumb="{{ m.thumb_url }}" data-kind="{{ m.kind }}" style="background: var(--surface-alt); padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: bold; font-size: 0.85rem;">{{ m.kind|upper }}: {{ m.media_url.split('/')[-1] }}</span>
+                    <button type="button" onclick="this.closest('.existing-media-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                    <input type="text" class="media-title-input" value="{{ m.title }}" placeholder="Title" style="margin-bottom: 0;">
+                    <input type="text" class="media-desc-input" value="{{ m.description }}" placeholder="Description" style="margin-bottom: 0;">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <input type="hidden" name="media_json_payload" id="mediaJsonPayload">
+
+        <!-- Upload New Media -->
+        <h4>+ Add New Media Items</h4>
+        <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px;">
+            <input type="file" id="newMediaPicker" accept="image/*,video/*" style="margin-bottom: 0;">
+            <button type="button" class="btn" onclick="addNewMediaQueueItem()">Queue Media</button>
+        </div>
+        <div id="newMediaQueue" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;"></div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 20px; height: 36px;">Save Asset Parameters</button>
     </form>
 </div>
+
+<script>
+let newMediaStore = new DataTransfer();
+const newMediaPicker = document.getElementById('newMediaPicker');
+const newMediaQueue = document.getElementById('newMediaQueue');
+
+function addNewMediaQueueItem() {
+    if (!newMediaPicker.files || newMediaPicker.files.length === 0) return;
+    const file = newMediaPicker.files[0];
+    newMediaStore.items.add(file);
+    const idx = newMediaStore.files.length - 1;
+
+    const div = document.createElement('div');
+    div.id = 'new-media-item-' + idx;
+    div.style = 'background: var(--surface-alt); padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;';
+    div.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; font-size: 0.85rem;">NEW: ${file.name}</span>
+            <button type="button" onclick="removeNewMedia(${idx})" class="btn-icon" style="color: var(--danger);">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+            <input type="text" name="new_media_titles" placeholder="Title" style="margin-bottom: 0;">
+            <input type="text" name="new_media_descriptions" placeholder="Description" style="margin-bottom: 0;">
+        </div>
+    `;
+    newMediaQueue.appendChild(div);
+    newMediaPicker.value = '';
+}
+
+function removeNewMedia(idx) {
+    const el = document.getElementById('new-media-item-' + idx);
+    if (el) el.remove();
+}
+
+document.getElementById('editAssetForm').addEventListener('submit', (e) => {
+    const existingRows = document.querySelectorAll('.existing-media-row');
+    const existingList = [];
+    existingRows.forEach(row => {
+        existingList.push({
+            id: row.getAttribute('data-id'),
+            kind: row.getAttribute('data-kind'),
+            title: row.querySelector('.media-title-input').value.trim(),
+            description: row.querySelector('.media-desc-input').value.trim(),
+            thumb_url: row.getAttribute('data-thumb'),
+            media_url: row.getAttribute('data-url')
+        });
+    });
+    document.getElementById('mediaJsonPayload').value = JSON.stringify(existingList);
+
+    if (newMediaStore.files.length > 0) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.name = 'new_media_files';
+        input.multiple = true;
+        input.files = newMediaStore.files;
+        input.style.display = 'none';
+        e.target.appendChild(input);
+    }
+});
+</script>
 {% endblock %}

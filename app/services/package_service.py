@@ -1,8 +1,10 @@
+# app/services/package_service.py
 import os
 import shutil
 import hashlib
 import zipfile
 import json
+import uuid
 from typing import List, Tuple
 from fastapi import UploadFile
 from PIL import Image
@@ -22,15 +24,18 @@ class PackageService:
         asset_media_dir = os.path.join(MEDIA_DIR, slug)
         os.makedirs(asset_media_dir, exist_ok=True)
 
+        uid = uuid.uuid4().hex[:8]
         img = Image.open(icon_file.file).convert("RGBA")
 
-        p32_path = os.path.join(asset_media_dir, "icon_32.png")
-        p64_path = os.path.join(asset_media_dir, "icon_64.png")
+        p32_name = f"icon_32_{uid}.png"
+        p64_name = f"icon_64_{uid}.png"
+        p32_path = os.path.join(asset_media_dir, p32_name)
+        p64_path = os.path.join(asset_media_dir, p64_name)
 
         img.resize((32, 32), Image.Resampling.LANCZOS).save(p32_path, "PNG")
         img.resize((64, 64), Image.Resampling.LANCZOS).save(p64_path, "PNG")
 
-        return f"/static/media/{slug}/icon_32.png", f"/static/media/{slug}/icon_64.png"
+        return f"/static/media/{slug}/{p32_name}", f"/static/media/{slug}/{p64_name}"
 
     @classmethod
     def save_media_items(cls, slug: str, media_files: List[UploadFile],
@@ -43,24 +48,38 @@ class PackageService:
             if not file or not file.filename:
                 continue
 
-            safe_filename = f"media_{idx + 1}_{file.filename}"
+            uid = uuid.uuid4().hex[:8]
+            ext = os.path.splitext(file.filename)[1].lower()
+            safe_filename = f"media_{uid}_{file.filename}"
             target_path = os.path.join(asset_media_dir, safe_filename)
 
             with open(target_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
 
-            ext = os.path.splitext(file.filename)[1].lower()
             kind = "video" if ext in [".mp4", ".webm", ".avi", ".mov"] else "image"
             media_title = titles[idx] if idx < len(titles) and titles[idx].strip() else file.filename
             media_desc = descriptions[idx] if idx < len(descriptions) else ""
             media_url = f"/static/media/{slug}/{safe_filename}"
 
+            # Create 64x64 tiny thumbnail for image files
+            thumb_url = media_url
+            if kind == "image":
+                try:
+                    thumb_name = f"thumb_64_{uid}.png"
+                    thumb_path = os.path.join(asset_media_dir, thumb_name)
+                    with Image.open(target_path) as src_img:
+                        thumb_img = src_img.convert("RGBA")
+                        thumb_img.resize((64, 64), Image.Resampling.LANCZOS).save(thumb_path, "PNG")
+                    thumb_url = f"/static/media/{slug}/{thumb_name}"
+                except Exception:
+                    thumb_url = media_url
+
             results.append({
-                "id": f"m{idx + 1}",
+                "id": f"m_{uid}",
                 "kind": kind,
                 "title": media_title,
                 "description": media_desc,
-                "thumb_url": media_url if kind == "image" else "",
+                "thumb_url": thumb_url,
                 "media_url": media_url
             })
 

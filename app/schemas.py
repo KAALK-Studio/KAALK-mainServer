@@ -27,9 +27,7 @@ class AuthResponse(BaseModel):
     phone: str
     isPro: bool
 
-class CommentCreateRequest(BaseModel):
+class ReviewSubmissionRequest(BaseModel):
     author: Optional[str] = "You"
     text: str
-
-class RatingCreateRequest(BaseModel):
-    rating: int
+    rating: Optional[int] = None

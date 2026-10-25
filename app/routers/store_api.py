@@ -4,7 +4,7 @@ import datetime
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, status
 from app.database import get_db
-from app.schemas import CommentCreateRequest, RatingCreateRequest
+from app.schemas import ReviewSubmissionRequest
 
 router = APIRouter(prefix="/api/v1", tags=["AutoCAD Store API"])
 
@@ -14,7 +14,7 @@ def get_catalog(type: Optional[str] = Query(None)):
     cursor = conn.cursor()
     query = """
     SELECT id, slug, name, type, latest_version, min_autocad, short_desc,
-           thumb_32_url, thumb_64_url, is_pro, rating, dev_name, tags
+           thumb_32_url, thumb_64_url, is_pro, rating, rating_count, dev_name, tags
     FROM assets
     """
     params = ()
@@ -30,6 +30,8 @@ def get_catalog(type: Optional[str] = Query(None)):
     for r in rows:
         thumb_url = r["thumb_64_url"] or r["thumb_32_url"] or f"/static/media/{r['slug']}/icon_64.png"
 
+        rating_val = float(r["rating"]) if (r["rating_count"] and r["rating_count"] > 0 and r["rating"] is not None) else None
+
         assets.append({
             "id": r["id"],
             "slug": r["slug"],
@@ -40,7 +42,7 @@ def get_catalog(type: Optional[str] = Query(None)):
             "short_desc": r["short_desc"] or "",
             "thumb_url": thumb_url,
             "is_pro": bool(r["is_pro"]),
-            "rating": float(r["rating"]) if r["rating"] else 5.0,
+            "rating": rating_val,
             "dev": r["dev_name"] or "KAALK Studio",
             "tags": r["tags"] or ""
         })
@@ -90,14 +92,14 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
         selected_version_data = version_history[0]
 
     cursor.execute("""
-    SELECT author, text, created_at 
+    SELECT author, text, rating, created_at 
     FROM comments 
     WHERE asset_id = ? 
     ORDER BY id DESC 
     LIMIT 10
     """, (asset_id,))
     comment_rows = cursor.fetchall()
-    
+
     cursor.execute("SELECT COUNT(*) as count FROM comments WHERE asset_id = ?", (asset_id,))
     total_comments = cursor.fetchone()["count"]
     conn.close()
@@ -120,8 +122,8 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
             "website": asset["dev_website"] or "https://kaalk.ir"
         },
         "stats": {
-            "rating_count": asset["rating_count"],
-            "download_count": asset["download_count"]
+            "rating_count": asset["rating_count"] or 0,
+            "download_count": asset["download_count"] or 0
         },
         "versions": {
             "latest": asset["latest_version"] or "1.0.0",
@@ -142,6 +144,7 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
                 {
                     "author": c["author"],
                     "text": c["text"],
+                    "rating": c["rating"],
                     "created_at": c["created_at"]
                 }
                 for c in comment_rows
@@ -150,53 +153,74 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
         "updated_at": asset["updated_at"]
     }
 
-# اندپوینت جدید: ثبت کامنت
-@router.post("/assets/{asset_id}/comments", status_code=status.HTTP_201_CREATED)
-def post_asset_comment(asset_id: str, payload: CommentCreateRequest):
-    if not payload.text or not payload.text.strip():
-        raise HTTPException(status_code=400, detail="Comment text cannot be empty.")
-
+@router.post("/assets/{asset_id}/reviews", status_code=status.HTTP_201_CREATED)
+def post_asset_review(asset_id: str, payload: ReviewSubmissionRequest):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM assets WHERE id = ?", (asset_id,))
-    if not cursor.fetchone():
-        conn.close()
-        raise HTTPException(status_code=404, detail="Asset not found.")
-
-    now = datetime.datetime.utcnow().isoformat()
-    cursor.execute("""
-    INSERT INTO comments (asset_id, author, text, rating, created_at)
-    VALUES (?, ?, ?, 5, ?)
-    """, (asset_id, payload.author.strip() if payload.author else "You", payload.text.strip(), now))
-    
-    conn.commit()
-    conn.close()
-    return {"success": True, "message": "Comment posted successfully."}
-
-# اندپوینت جدید: ثبت امتیاز و محاسبه میانگین
-@router.post("/assets/{asset_id}/ratings")
-def post_asset_rating(asset_id: str, payload: RatingCreateRequest):
-    if payload.rating < 1 or payload.rating > 5:
-        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5.")
-
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT rating, rating_count FROM assets WHERE id = ?", (asset_id,))
+    cursor.execute("SELECT id, rating, rating_count FROM assets WHERE id = ?", (asset_id,))
     asset = cursor.fetchone()
     if not asset:
         conn.close()
         raise HTTPException(status_code=404, detail="Asset not found.")
 
-    current_rating = asset["rating"] or 5.0
-    current_count = asset["rating_count"] or 0
-
-    new_count = current_count + 1
-    new_rating = ((current_rating * current_count) + payload.rating) / new_count
+    now = datetime.datetime.utcnow().isoformat()
+    submitted_rating = payload.rating if (payload.rating and 1 <= payload.rating <= 5) else None
 
     cursor.execute("""
-    UPDATE assets SET rating = ?, rating_count = ? WHERE id = ?
-    """, (round(new_rating, 1), new_count, asset_id))
+    INSERT INTO comments (asset_id, author, text, rating, created_at)
+    VALUES (?, ?, ?, ?, ?)
+    """, (asset_id, payload.author.strip() if payload.author else "You", payload.text.strip(), submitted_rating, now))
+
+    if submitted_rating is not None:
+        current_rating = asset["rating"] or 0.0
+        current_count = asset["rating_count"] or 0
+        new_count = current_count + 1
+        new_rating = ((current_rating * current_count) + submitted_rating) / new_count
+        cursor.execute("UPDATE assets SET rating = ?, rating_count = ? WHERE id = ?",
+                       (round(new_rating, 1), new_count, asset_id))
 
     conn.commit()
     conn.close()
-    return {"success": True, "rating": round(new_rating, 1), "rating_count": new_count}
+    return {"success": True, "message": "Review submitted successfully."}
+
+@router.get("/user/reviews")
+def get_user_reviews(email: Optional[str] = Query(None)):
+    conn = get_db()
+    cursor = conn.cursor()
+
+    query = """
+    SELECT c.id, c.asset_id, a.name as asset_name, c.rating, c.text, c.created_at
+    FROM comments c
+    JOIN assets a ON c.asset_id = a.id
+    """
+    params = ()
+    if email:
+        query += " WHERE c.author = ? OR c.user_id IN (SELECT id FROM users WHERE email = ?)"
+        params = (email, email)
+
+    query += " ORDER BY c.id DESC LIMIT 50"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+
+    reviews = []
+    for r in rows:
+        reviews.append({
+            "id": r["id"],
+            "asset_id": r["asset_id"],
+            "asset_name": r["asset_name"],
+            "rating": r["rating"] or 0,
+            "text": r["text"],
+            "created_at": r["created_at"][:10] if r["created_at"] else ""
+        })
+
+    return {"reviews": reviews}
+
+@router.post("/reviews/{review_id}/delete")
+def delete_user_review(review_id: int):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM comments WHERE id = ?", (review_id,))
+    conn.commit()
+    conn.close()
+    return {"success": True}

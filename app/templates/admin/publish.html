@@ -8,7 +8,7 @@
     </p>
 
     {% if success %}
-        <div class="alert" style="border-left-color: var(--success); font-weight: bold;">{{ success }}</div>
+        <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 16px;">{{ success }}</div>
     {% endif %}
 
     <form id="publishForm" action="/admin/publish" method="POST" enctype="multipart/form-data">
@@ -69,6 +69,9 @@
         <label>Full Documentation</label>
         <textarea name="full_desc" rows="3"></textarea>
 
+        <label>Tags (Comma separated, e.g. lisp, layers, blocks, drafting)</label>
+        <input type="text" name="tags" placeholder="e.g. lisp, layers, blocks">
+
         <label>Release Notes</label>
         <textarea name="release_notes" rows="2" placeholder="- Fixed viewport redraw issue"></textarea>
 
@@ -80,7 +83,6 @@
 
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
-        <!-- Dynamic Binary & Dependency Files Queue -->
         <h3>Package Source & Dependency Files</h3>
         <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select any .lsp, .vlx, .fas, .dll, .dcl, .dwg files. Choose which is the Main Entry Point.</p>
 
@@ -89,12 +91,10 @@
             <div id="sourcesQueue" style="margin-top: 10px;"></div>
         </div>
 
-        <!-- Hidden input storing selected entry point filename -->
         <input type="hidden" name="entry_point" id="selectedEntryPoint" required>
 
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
-        <!-- Dynamic Unlimited Media Queue -->
         <h3>Tutorial Media & Screenshots (Unlimited)</h3>
         <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Add screenshots, workflow images, or MP4 demo videos.</p>
 
@@ -118,7 +118,6 @@
 </div>
 
 <script>
-// Dynamic File Queue with Entry Point Auto-detection
 const sourcePicker = document.getElementById('sourcePicker');
 const sourcesQueue = document.getElementById('sourcesQueue');
 const entryPointInput = document.getElementById('selectedEntryPoint');
@@ -181,7 +180,6 @@ function removeSource(index) {
     renderSources();
 }
 
-// Unlimited Dynamic Media Queue
 const mediaPicker = document.getElementById('mediaPicker');
 const mediaQueue = document.getElementById('mediaQueue');
 let mediaStore = new DataTransfer();
@@ -214,7 +212,6 @@ function removeMedia(idx) {
     if (el) el.remove();
 }
 
-// Attach DataTransfer files before form submission
 document.getElementById('publishForm').addEventListener('submit', (e) => {
     if (fileStore.files.length === 0) {
         alert('Please add at least one source file.');

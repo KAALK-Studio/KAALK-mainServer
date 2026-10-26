@@ -1,4 +1,4 @@
-# app/routers/store_api.py
+# app/routers/store_api.py (تابع get_asset_detail)
 import json
 import datetime
 from typing import Optional
@@ -95,7 +95,7 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
     FROM comments 
     WHERE asset_id = ? 
     ORDER BY id DESC 
-    LIMIT 10
+    LIMIT 20
     """, (asset_id,))
     comment_rows = cursor.fetchall()
 
@@ -143,8 +143,8 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
                 {
                     "author": c["author"],
                     "text": c["text"],
-                    "rating": c["rating"],
-                    "created_at": c["created_at"]
+                    "rating": c["rating"] or 0,
+                    "created_at": c["created_at"][:10] if c["created_at"] else ""
                 }
                 for c in comment_rows
             ]
@@ -195,7 +195,6 @@ def post_asset_review(asset_id: str, payload: ReviewSubmissionRequest):
         VALUES (?, ?, ?, ?, ?, ?)
         """, (asset_id, user_id, author_name, payload.text.strip(), submitted_rating, now))
 
-    # Calculate real mathematical average without duplicating count
     cursor.execute("""
     SELECT AVG(rating) as avg_rating, COUNT(rating) as count_rating 
     FROM comments 

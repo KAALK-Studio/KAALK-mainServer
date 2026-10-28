@@ -26,6 +26,9 @@ class AuthResponse(BaseModel):
     email: str
     phone: str
     isPro: bool
+    subscriptionTier: Optional[str] = "free"
+    subscriptionExpiresAt: Optional[str] = None
+    remainingDays: Optional[int] = 0
 
 class ReviewSubmissionRequest(BaseModel):
     author: Optional[str] = "You"

@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 {% block title %}Deploy New Version - {{ asset.name }}{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 680px; margin: auto;">
+<div class="card" style="max-width: 760px; margin: auto;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
         <div>
             <h2>Deploy New Version</h2>
@@ -16,8 +16,63 @@
     {% endif %}
 
     <form id="deployVersionForm" action="/admin/assets/{{ asset.id }}/versions/new" method="POST" enctype="multipart/form-data">
-        <label>New Version Identifier (e.g. 1.0.1)</label>
-        <input type="text" name="version" placeholder="1.0.1" required style="margin-bottom: 14px;">
+        <label>New Version Identifier (e.g. 1.1.0)</label>
+        <input type="text" name="version" placeholder="1.1.0" required style="margin-bottom: 14px;">
+
+        <!-- Commands & Lifecycle Status Repeater -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+                <h3>Version Commands & Lifecycle Status</h3>
+                <p style="color: var(--muted); font-size: 0.8rem;">Define which commands are supported in this release, including new Beta features or Deprecations.</p>
+            </div>
+            <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
+        </div>
+
+        <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+            {% for c in asset.commands_list %}
+            <div class="command-row" style="background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+                    <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
+                    <div>
+                        <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
+                        <input type="text" class="cmd-name" value="{{ c.command }}" placeholder="XLV" required style="margin-bottom: 0;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
+                        <input type="text" class="cmd-alias" value="{{ c.alias }}" placeholder="XV" style="margin-bottom: 0;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem;">Status</label>
+                        <select class="cmd-status" style="margin-bottom: 0;">
+                            <option value="stable" {% if c.status == 'stable' %}selected{% endif %}>Stable</option>
+                            <option value="beta" {% if c.status == 'beta' %}selected{% endif %}>Beta (Experimental)</option>
+                            <option value="deprecated" {% if c.status == 'deprecated' %}selected{% endif %}>Deprecated</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem;">Title</label>
+                        <input type="text" class="cmd-title" value="{{ c.title }}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div>
+                        <label style="font-size: 0.75rem;">Description</label>
+                        <input type="text" class="cmd-desc" value="{{ c.description }}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
+                        <input type="text" class="cmd-dep-notice" value="{{ c.deprecation_notice or '' }}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
         <div style="margin-top: 6px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -27,14 +82,14 @@
                     <button type="button" id="relPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleRelTab('preview')">Live Preview</button>
                 </div>
             </div>
-            <textarea name="release_notes" id="releaseNotesInput" rows="4" placeholder="- Fixed viewport redraw issue&#10;- Enhanced `XLV` snap calculation"></textarea>
+            <textarea name="release_notes" id="releaseNotesInput" rows="4" placeholder="- Added experimental `XLS` command (Beta)&#10;- Deprecated legacy `OLD_GUIDE`&#10;- Fixed memory leak in viewport calculations"></textarea>
             <div id="releaseNotesPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 10px; border-radius: 4px; min-height: 80px; font-size: 0.85rem; margin-bottom: 14px;"></div>
         </div>
 
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
         <h3>Updated Package Source & Dependency Files</h3>
-        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select the updated executable and dependency files (.lsp, .vlx, .fas, .dll, .dcl, .dwg) for this release.</p>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select the updated executable .dll and dependency files (.dcl, .dwg) for this release.</p>
 
         <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
             <input type="file" id="sourcePicker" multiple>
@@ -84,6 +139,53 @@ function toggleRelTab(mode) {
     }
 }
 
+const commandsContainer = document.getElementById('commandsContainer');
+
+function addCommandRow(command = '', alias = '', title = '', status = 'stable', description = '', deprecationNotice = '') {
+    const row = document.createElement('div');
+    row.className = 'command-row';
+    row.style = 'background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;';
+    row.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+            <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
+            <div>
+                <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
+                <input type="text" class="cmd-name" value="${command}" placeholder="XLV" required style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
+                <input type="text" class="cmd-alias" value="${alias}" placeholder="XV" style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Status</label>
+                <select class="cmd-status" style="margin-bottom: 0;">
+                    <option value="stable" ${status === 'stable' ? 'selected' : ''}>Stable</option>
+                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta (Experimental)</option>
+                    <option value="deprecated" ${status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Title</label>
+                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+                <label style="font-size: 0.75rem;">Description</label>
+                <input type="text" class="cmd-desc" value="${description}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
+                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+            </div>
+        </div>
+    `;
+    commandsContainer.appendChild(row);
+}
+
 const sourcePicker = document.getElementById('sourcePicker');
 const sourcesQueue = document.getElementById('sourcesQueue');
 const entryPointInput = document.getElementById('selectedEntryPoint');
@@ -99,7 +201,7 @@ sourcePicker.addEventListener('change', () => {
 
 function renderSources() {
     sourcesQueue.innerHTML = '';
-    const executableExts = ['.lsp', '.vlx', '.fas', '.dll'];
+    const executableExts = ['.dll'];
     
     Array.from(fileStore.files).forEach((file, index) => {
         const ext = '.' + file.name.split('.').pop().toLowerCase();
@@ -153,10 +255,27 @@ document.getElementById('deployVersionForm').addEventListener('submit', (e) => {
         return;
     }
     if (!entryPointInput.value) {
-        alert('Please select an executable file (.lsp, .vlx, .fas, .dll) as the Main Entry Point.');
+        alert('Please select an executable file (.dll) as the Main Entry Point.');
         e.preventDefault();
         return;
     }
+
+    const commandRows = document.querySelectorAll('.command-row');
+    const commandsList = [];
+    commandRows.forEach(row => {
+        const cmdName = row.querySelector('.cmd-name').value.trim();
+        if (cmdName) {
+            commandsList.push({
+                command: cmdName,
+                alias: row.querySelector('.cmd-alias').value.trim(),
+                title: row.querySelector('.cmd-title').value.trim(),
+                status: row.querySelector('.cmd-status').value,
+                description: row.querySelector('.cmd-desc').value.trim(),
+                deprecation_notice: row.querySelector('.cmd-dep-notice').value.trim()
+            });
+        }
+    });
+    document.getElementById('commandsJsonPayload').value = JSON.stringify(commandsList);
 
     const fileInput = document.createElement('input');
     fileInput.type = 'file';

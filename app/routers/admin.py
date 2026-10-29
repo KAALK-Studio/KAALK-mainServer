@@ -421,15 +421,34 @@ def deploy_version_page(request: Request, asset_id: str):
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
     asset = cursor.fetchone()
-    conn.close()
 
     if not asset:
+        conn.close()
         raise HTTPException(status_code=404, detail="Asset not found.")
+
+    cursor.execute("SELECT commands_json FROM asset_versions WHERE asset_id = ? ORDER BY id DESC LIMIT 1", (asset_id,))
+    latest_ver = cursor.fetchone()
+    conn.close()
+
+    raw_commands = []
+    if latest_ver and latest_ver["commands_json"]:
+        try:
+            raw_commands = json.loads(latest_ver["commands_json"])
+        except Exception:
+            raw_commands = []
+    elif asset["commands_json"]:
+        try:
+            raw_commands = json.loads(asset["commands_json"])
+        except Exception:
+            raw_commands = []
+
+    asset_dict = dict(asset)
+    asset_dict["commands_list"] = raw_commands
 
     return templates.TemplateResponse(
         request=request,
         name="admin/version_deploy.html",
-        context={"request": request, "user": user, "asset": dict(asset), "error": None}
+        context={"request": request, "user": user, "asset": asset_dict, "error": None}
     )
 
 @router.post("/assets/{asset_id}/versions/new", response_class=HTMLResponse)
@@ -438,6 +457,7 @@ async def deploy_version_action(request: Request,
                                 version: str = Form(...),
                                 release_notes: str = Form(""),
                                 entry_point: str = Form(...),
+                                commands_json_payload: str = Form("[]"),
                                 source_files: List[UploadFile] = File(...)):
     user = require_admin(request)
     version = version.strip()
@@ -467,7 +487,7 @@ async def deploy_version_action(request: Request,
 
     slug = asset["slug"]
     try:
-        commands_list = json.loads(asset["commands_json"]) if asset["commands_json"] else []
+        commands_list = json.loads(commands_json_payload)
     except Exception:
         commands_list = []
 
@@ -477,13 +497,13 @@ async def deploy_version_action(request: Request,
 
     now = datetime.datetime.utcnow().isoformat()
     cursor.execute("""
-    INSERT INTO asset_versions (asset_id, version, release_notes, download_url, file_size, sha256, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (asset_id, version, release_notes.strip(), pkg_info["download_url"], pkg_info["file_size"], pkg_info["sha256"], now))
+    INSERT INTO asset_versions (asset_id, version, release_notes, download_url, file_size, sha256, commands_json, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (asset_id, version, release_notes.strip(), pkg_info["download_url"], pkg_info["file_size"], pkg_info["sha256"], json.dumps(commands_list), now))
 
     cursor.execute("""
-    UPDATE assets SET latest_version = ?, updated_at = ? WHERE id = ?
-    """, (version, now, asset_id))
+    UPDATE assets SET latest_version = ?, commands_json = ?, updated_at = ? WHERE id = ?
+    """, (version, json.dumps(commands_list), now, asset_id))
 
     conn.commit()
     conn.close()
@@ -499,11 +519,14 @@ def delete_asset_version(request: Request, asset_id: str, version: str):
     asset = cursor.fetchone()
 
     cursor.execute("DELETE FROM asset_versions WHERE asset_id = ? AND version = ?", (asset_id, version))
-    cursor.execute("SELECT version FROM asset_versions WHERE asset_id = ? ORDER BY id DESC", (asset_id,))
-    remaining = [r["version"] for r in cursor.fetchall()]
+    cursor.execute("SELECT version, commands_json FROM asset_versions WHERE asset_id = ? ORDER BY id DESC", (asset_id,))
+    remaining_rows = cursor.fetchall()
+    remaining = [r["version"] for r in remaining_rows]
 
     new_latest = remaining[0] if remaining else ""
-    cursor.execute("UPDATE assets SET latest_version = ? WHERE id = ?", (new_latest, asset_id))
+    new_commands = remaining_rows[0]["commands_json"] if remaining_rows else "[]"
+
+    cursor.execute("UPDATE assets SET latest_version = ?, commands_json = ? WHERE id = ?", (new_latest, new_commands, asset_id))
     conn.commit()
     conn.close()
 
@@ -603,10 +626,10 @@ async def publish_action(request: Request,
           tags.strip(), json.dumps(media_data), version.strip(), now, now))
 
     cursor.execute("""
-    INSERT OR REPLACE INTO asset_versions (asset_id, version, release_notes, download_url, file_size, sha256, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO asset_versions (asset_id, version, release_notes, download_url, file_size, sha256, commands_json, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (asset_id.strip(), version.strip(), release_notes.strip(), pkg_info["download_url"],
-          pkg_info["file_size"], pkg_info["sha256"], now))
+          pkg_info["file_size"], pkg_info["sha256"], json.dumps(commands_list), now))
 
     conn.commit()
     conn.close()

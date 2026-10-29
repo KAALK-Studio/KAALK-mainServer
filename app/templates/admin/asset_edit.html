@@ -1,3 +1,4 @@
+<!-- app/templates/admin/asset_edit.html -->
 {% extends "base.html" %}
 {% block title %}Edit Asset - KAALK Admin{% endblock %}
 {% block content %}
@@ -20,7 +21,7 @@
             <div>
                 <label>Category</label>
                 <select name="type">
-                    <option value="tool" {% if asset.type == 'tool' %}selected{% endif %}>Tool</option>
+                    <option value="tool" {% if asset.type == 'tool' %}selected{% endif %}>Tool / Suite</option>
                     <option value="block" {% if asset.type == 'block' %}selected{% endif %}>Block</option>
                     <option value="font" {% if asset.type == 'font' %}selected{% endif %}>Font</option>
                     <option value="pattern" {% if asset.type == 'pattern' %}selected{% endif %}>Pattern</option>
@@ -37,20 +38,55 @@
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
             <div>
                 <label>Min AutoCAD Version</label>
                 <input type="number" name="min_autocad" value="{{ asset.min_autocad }}">
             </div>
-            <div>
-                <label>Command Trigger</label>
-                <input type="text" name="default_command" value="{{ asset.default_command or '' }}">
-            </div>
-            <div>
-                <label>Command Alias</label>
-                <input type="text" name="default_alias" value="{{ asset.default_alias or '' }}">
-            </div>
         </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <!-- Commands & Shortcuts Repeater -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+                <h3>Commands & Shortcuts</h3>
+                <p style="color: var(--muted); font-size: 0.8rem;">Define the AutoCAD commands and aliases provided by this package.</p>
+            </div>
+            <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
+        </div>
+
+        <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+            {% for c in asset.commands_list %}
+            <div class="command-row" style="background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+                    <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 8px; margin-bottom: 6px;">
+                    <div>
+                        <label style="font-size: 0.75rem;">Command Name (e.g. XLV)</label>
+                        <input type="text" class="cmd-name" value="{{ c.command }}" placeholder="XLV" required style="margin-bottom: 0;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem;">Alias (Optional, e.g. XV)</label>
+                        <input type="text" class="cmd-alias" value="{{ c.alias }}" placeholder="XV" style="margin-bottom: 0;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem;">Command Title</label>
+                        <input type="text" class="cmd-title" value="{{ c.title }}" placeholder="Vertical Construction Line" style="margin-bottom: 0;">
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size: 0.75rem;">Description</label>
+                    <input type="text" class="cmd-desc" value="{{ c.description }}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
         <label>Short Description (Catalog Index)</label>
         <input type="text" name="short_desc" value="{{ asset.short_desc or '' }}" required>
@@ -64,7 +100,7 @@
         <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin: 15px 0;">
             <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text); font-weight: bold;">
                 <input type="checkbox" name="is_pro" style="width: auto; margin: 0;" {% if asset.is_pro %}checked{% endif %}>
-                Requires Active Pro Subscription (Uncheck to make this tool completely FREE)
+                Requires Active Pro Subscription (Uncheck to make this package completely FREE)
             </label>
         </div>
 
@@ -75,7 +111,6 @@
 
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
-        <!-- Manage Existing Media -->
         <h3>Manage Tutorial Media & Screenshots</h3>
         <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Update titles, descriptions or delete existing media.</p>
 
@@ -96,7 +131,6 @@
 
         <input type="hidden" name="media_json_payload" id="mediaJsonPayload">
 
-        <!-- Upload New Media -->
         <h4>+ Add New Media Items</h4>
         <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px;">
             <input type="file" id="newMediaPicker" accept="image/*,video/*" style="margin-bottom: 0;">
@@ -109,6 +143,39 @@
 </div>
 
 <script>
+const commandsContainer = document.getElementById('commandsContainer');
+
+function addCommandRow(command = '', alias = '', title = '', description = '') {
+    const row = document.createElement('div');
+    row.className = 'command-row';
+    row.style = 'background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;';
+    row.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+            <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 8px; margin-bottom: 6px;">
+            <div>
+                <label style="font-size: 0.75rem;">Command Name (e.g. XLV)</label>
+                <input type="text" class="cmd-name" value="${command}" placeholder="XLV" required style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Alias (Optional, e.g. XV)</label>
+                <input type="text" class="cmd-alias" value="${alias}" placeholder="XV" style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Command Title</label>
+                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Construction Line" style="margin-bottom: 0;">
+            </div>
+        </div>
+        <div>
+            <label style="font-size: 0.75rem;">Description</label>
+            <input type="text" class="cmd-desc" value="${description}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+        </div>
+    `;
+    commandsContainer.appendChild(row);
+}
+
 let newMediaStore = new DataTransfer();
 const newMediaPicker = document.getElementById('newMediaPicker');
 const newMediaQueue = document.getElementById('newMediaQueue');
@@ -142,6 +209,21 @@ function removeNewMedia(idx) {
 }
 
 document.getElementById('editAssetForm').addEventListener('submit', (e) => {
+    const commandRows = document.querySelectorAll('.command-row');
+    const commandsList = [];
+    commandRows.forEach(row => {
+        const cmdName = row.querySelector('.cmd-name').value.trim();
+        if (cmdName) {
+            commandsList.push({
+                command: cmdName,
+                alias: row.querySelector('.cmd-alias').value.trim(),
+                title: row.querySelector('.cmd-title').value.trim(),
+                description: row.querySelector('.cmd-desc').value.trim()
+            });
+        }
+    });
+    document.getElementById('commandsJsonPayload').value = JSON.stringify(commandsList);
+
     const existingRows = document.querySelectorAll('.existing-media-row');
     const existingList = [];
     existingRows.forEach(row => {

@@ -1,4 +1,4 @@
-# app/routers/store_api.py (تابع get_asset_detail)
+# app/routers/store_api.py
 import json
 import datetime
 from typing import Optional
@@ -14,7 +14,8 @@ def get_catalog(type: Optional[str] = Query(None)):
     cursor = conn.cursor()
     query = """
     SELECT id, slug, name, type, latest_version, min_autocad, short_desc,
-           thumb_32_url, thumb_64_url, is_pro, rating, rating_count, dev_name, tags
+           thumb_32_url, thumb_64_url, is_pro, rating, rating_count, dev_name,
+           commands_json, tags
     FROM assets
     """
     params = ()
@@ -31,6 +32,11 @@ def get_catalog(type: Optional[str] = Query(None)):
         thumb_url = r["thumb_64_url"] or r["thumb_32_url"] or f"/static/media/{r['slug']}/icon_64.png"
         rating_val = float(r["rating"]) if (r["rating_count"] and r["rating_count"] > 0 and r["rating"] is not None) else 0.0
 
+        try:
+            commands_list = json.loads(r["commands_json"]) if r["commands_json"] else []
+        except Exception:
+            commands_list = []
+
         assets.append({
             "id": r["id"],
             "slug": r["slug"],
@@ -43,6 +49,7 @@ def get_catalog(type: Optional[str] = Query(None)):
             "is_pro": bool(r["is_pro"]),
             "rating": rating_val,
             "dev": r["dev_name"] or "KAALK Studio",
+            "commands": commands_list,
             "tags": r["tags"] or ""
         })
 
@@ -108,13 +115,17 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
     except Exception:
         media_list = []
 
+    try:
+        commands_list = json.loads(asset["commands_json"]) if asset["commands_json"] else []
+    except Exception:
+        commands_list = []
+
     return {
         "id": asset["id"],
         "slug": asset["slug"],
         "name": asset["name"],
         "full_description": asset["full_desc"] or "",
-        "default_command": asset["default_command"] or "",
-        "default_alias": asset["default_alias"] or "",
+        "commands": commands_list,
         "developer": {
             "id": asset["dev_id"] or "dev_kaalk",
             "name": asset["dev_name"] or "KAALK Studio",

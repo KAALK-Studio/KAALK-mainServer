@@ -23,31 +23,46 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Work out the version
-        id: version
+      - name: Detect workspace and compute version
+        id: setup
         shell: pwsh
         run: |
-          $baseVersion = (Get-Content -Path "version.txt" -Raw).Trim()
+          $pluginDir = "."
+          if (Test-Path "KAALK-assetManager-main/Check-Architecture.cmd") {
+              $pluginDir = "KAALK-assetManager-main"
+          }
+          Write-Host "Target Plugin Directory: $pluginDir"
+
+          $versionFile = Join-Path $pluginDir "version.txt"
+          if (-not (Test-Path $versionFile)) {
+              $versionFile = "version.txt"
+          }
+
+          $baseVersion = (Get-Content -Path $versionFile -Raw).Trim()
           $fullVersion = "$baseVersion.${{ github.run_number }}"
           $shortCommit = "${{ github.sha }}".Substring(0, 7)
+
           Write-Host "Computed Version: $fullVersion"
+          "plugin_dir=$pluginDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "version=$fullVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "commit=$shortCommit" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Check architecture rules
+        working-directory: ${{ steps.setup.outputs.plugin_dir }}
         shell: cmd
         run: Check-Architecture.cmd
 
       - name: Compile plugin assembly
+        working-directory: ${{ steps.setup.outputs.plugin_dir }}
         shell: pwsh
         run: |
-          ./build/Build.ps1 -Version "${{ steps.version.outputs.version }}" -Commit "${{ steps.version.outputs.commit }}"
+          ./build/Build.ps1 -Version "${{ steps.setup.outputs.version }}" -Commit "${{ steps.setup.outputs.commit }}"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: KaalkAssetManager-v${{ steps.version.outputs.version }}
-          path: dist/
+          name: KaalkAssetManager-v${{ steps.setup.outputs.version }}
+          path: ${{ steps.setup.outputs.plugin_dir }}/dist/
           retention-days: 90
 
       - name: Publish GitHub Release
@@ -55,9 +70,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          $ver = "${{ steps.version.outputs.version }}"
-          $zipPath = "dist/KaalkAssetManager-v$ver.zip"
-          $dllPath = "dist/$ver/KaalkAssetManager.dll"
+          $ver = "${{ steps.setup.outputs.version }}"
+          $dir = "${{ steps.setup.outputs.plugin_dir }}"
+          $zipPath = Join-Path $dir "dist/KaalkAssetManager-v$ver.zip"
+          $dllPath = Join-Path $dir "dist/$ver/KaalkAssetManager.dll"
           $notes = "${{ inputs.release_notes }}"
-          
+
           gh release create "v$ver" $zipPath $dllPath --title "v$ver" --notes "$notes"

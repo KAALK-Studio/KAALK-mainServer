@@ -59,7 +59,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div>
                 <h3>Commands & Shortcuts</h3>
-                <p style="color: var(--muted); font-size: 0.8rem;">Define the AutoCAD commands and aliases provided by this package.</p>
+                <p style="color: var(--muted); font-size: 0.8rem;">Define the AutoCAD commands, aliases, and lifecycle maturity status (Stable, Beta, Deprecated).</p>
             </div>
             <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
         </div>
@@ -113,7 +113,7 @@
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
         <h3>Package Source & Dependency Files</h3>
-        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select any .lsp, .vlx, .fas, .dll, .dcl, .dwg files. Choose which is the Main Entry Point.</p>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select any .dll, .dcl, .dwg files. Choose which is the Main Entry Point.</p>
 
         <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
             <input type="file" id="sourcePicker" multiple>
@@ -205,7 +205,7 @@ function toggleRelTab(mode) {
 
 const commandsContainer = document.getElementById('commandsContainer');
 
-function addCommandRow(command = '', alias = '', title = '', description = '') {
+function addCommandRow(command = '', alias = '', title = '', status = 'stable', description = '', deprecationNotice = '') {
     const row = document.createElement('div');
     row.className = 'command-row';
     row.style = 'background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;';
@@ -214,23 +214,37 @@ function addCommandRow(command = '', alias = '', title = '', description = '') {
             <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
             <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 8px; margin-bottom: 6px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
             <div>
-                <label style="font-size: 0.75rem;">Command Name (e.g. XLV)</label>
+                <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
                 <input type="text" class="cmd-name" value="${command}" placeholder="XLV" required style="margin-bottom: 0;">
             </div>
             <div>
-                <label style="font-size: 0.75rem;">Alias (Optional, e.g. XV)</label>
+                <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
                 <input type="text" class="cmd-alias" value="${alias}" placeholder="XV" style="margin-bottom: 0;">
             </div>
             <div>
-                <label style="font-size: 0.75rem;">Command Title</label>
-                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Construction Line" style="margin-bottom: 0;">
+                <label style="font-size: 0.75rem;">Status</label>
+                <select class="cmd-status" style="margin-bottom: 0;">
+                    <option value="stable" ${status === 'stable' ? 'selected' : ''}>Stable</option>
+                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta (Experimental)</option>
+                    <option value="deprecated" ${status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Title</label>
+                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
             </div>
         </div>
-        <div>
-            <label style="font-size: 0.75rem;">Description</label>
-            <input type="text" class="cmd-desc" value="${description}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+                <label style="font-size: 0.75rem;">Description</label>
+                <input type="text" class="cmd-desc" value="${description}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
+                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+            </div>
         </div>
     `;
     commandsContainer.appendChild(row);
@@ -254,7 +268,7 @@ sourcePicker.addEventListener('change', () => {
 
 function renderSources() {
     sourcesQueue.innerHTML = '';
-    const executableExts = ['.lsp', '.vlx', '.fas', '.dll'];
+    const executableExts = ['.dll', '.lsp', '.vlx', '.fas'];
     
     Array.from(fileStore.files).forEach((file, index) => {
         const ext = '.' + file.name.split('.').pop().toLowerCase();
@@ -340,7 +354,7 @@ document.getElementById('publishForm').addEventListener('submit', (e) => {
         return;
     }
     if (!entryPointInput.value) {
-        alert('Please select an executable file (.lsp, .vlx, .fas, .dll) as the Main Entry Point.');
+        alert('Please select an executable file (.dll) as the Main Entry Point.');
         e.preventDefault();
         return;
     }
@@ -354,7 +368,9 @@ document.getElementById('publishForm').addEventListener('submit', (e) => {
                 command: cmdName,
                 alias: row.querySelector('.cmd-alias').value.trim(),
                 title: row.querySelector('.cmd-title').value.trim(),
-                description: row.querySelector('.cmd-desc').value.trim()
+                status: row.querySelector('.cmd-status').value,
+                description: row.querySelector('.cmd-desc').value.trim(),
+                deprecation_notice: row.querySelector('.cmd-dep-notice').value.trim()
             });
         }
     });

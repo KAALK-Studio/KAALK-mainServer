@@ -18,8 +18,6 @@ def require_admin(request: Request):
         raise HTTPException(status_code=403, detail="Admin privileges required.")
     return user
 
-# --- Dashboard & Intelligence ---
-
 @router.get("", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
     user = require_admin(request)
@@ -104,8 +102,6 @@ def admin_dashboard(request: Request):
             "geo_nodes": geo_nodes
         }
     )
-
-# --- User Management ---
 
 @router.get("/users", response_class=HTMLResponse)
 def users_list(request: Request):
@@ -253,8 +249,6 @@ def delete_user_action(request: Request, user_id: int):
 
     return RedirectResponse("/admin/users", status_code=302)
 
-# --- Asset Management ---
-
 @router.get("/assets", response_class=HTMLResponse)
 def assets_list(request: Request):
     user = require_admin(request)
@@ -294,6 +288,11 @@ def edit_asset_page(request: Request, asset_id: str):
     except Exception:
         raw_media = []
 
+    try:
+        raw_commands = json.loads(asset_dict.get("commands_json") or "[]")
+    except Exception:
+        raw_commands = []
+
     media_items = []
     for m in raw_media:
         m_copy = dict(m)
@@ -302,6 +301,7 @@ def edit_asset_page(request: Request, asset_id: str):
         media_items.append(m_copy)
 
     asset_dict["media_items"] = media_items
+    asset_dict["commands_list"] = raw_commands
 
     return templates.TemplateResponse(
         request=request,
@@ -318,8 +318,7 @@ async def update_asset_action(request: Request,
                               min_autocad: int = Form(2018),
                               short_desc: str = Form(""),
                               full_desc: str = Form(""),
-                              default_command: str = Form(""),
-                              default_alias: str = Form(""),
+                              commands_json_payload: str = Form("[]"),
                               tags: str = Form(""),
                               is_pro: bool = Form(False),
                               media_json_payload: str = Form("[]"),
@@ -349,6 +348,11 @@ async def update_asset_action(request: Request,
     except Exception:
         updated_media = []
 
+    try:
+        updated_commands = json.loads(commands_json_payload)
+    except Exception:
+        updated_commands = []
+
     if new_media_files and len(new_media_files) > 0 and new_media_files[0].filename:
         added_media = PackageService.save_media_items(slug, new_media_files, new_media_titles, new_media_descriptions)
         updated_media.extend(added_media)
@@ -357,12 +361,12 @@ async def update_asset_action(request: Request,
     cursor.execute("""
     UPDATE assets SET
         name = ?, type = ?, asset_status = ?, min_autocad = ?,
-        short_desc = ?, full_desc = ?, default_command = ?, default_alias = ?,
+        short_desc = ?, full_desc = ?, commands_json = ?,
         tags = ?, is_pro = ?, thumb_32_url = ?, thumb_64_url = ?,
         media_json = ?, updated_at = ?
     WHERE id = ?
     """, (name.strip(), type.strip(), asset_status.strip(), min_autocad,
-          short_desc.strip(), full_desc.strip(), default_command.strip(), default_alias.strip(),
+          short_desc.strip(), full_desc.strip(), json.dumps(updated_commands),
           tags.strip(), 1 if is_pro else 0, thumb_32, thumb_64,
           json.dumps(updated_media), now, asset_id))
 
@@ -379,6 +383,7 @@ async def update_asset_action(request: Request,
         media_items.append(m_copy)
 
     updated_asset["media_items"] = media_items
+    updated_asset["commands_list"] = updated_commands
 
     return templates.TemplateResponse(
         request=request,
@@ -439,8 +444,6 @@ def delete_asset_action(request: Request, asset_id: str):
     conn.close()
     return RedirectResponse("/admin/assets", status_code=302)
 
-# --- Publishing ---
-
 @router.get("/publish", response_class=HTMLResponse)
 def publish_page(request: Request):
     user = require_admin(request)
@@ -462,8 +465,7 @@ async def publish_action(request: Request,
                          short_desc: str = Form(""),
                          full_desc: str = Form(""),
                          entry_point: str = Form(...),
-                         default_command: str = Form(""),
-                         default_alias: str = Form(""),
+                         commands_json_payload: str = Form("[]"),
                          release_notes: str = Form(""),
                          is_pro: bool = Form(False),
                          tags: str = Form(""),
@@ -481,8 +483,13 @@ async def publish_action(request: Request,
 
     media_data = PackageService.save_media_items(slug, media_files, media_titles, media_descriptions)
 
+    try:
+        commands_list = json.loads(commands_json_payload)
+    except Exception:
+        commands_list = []
+
     pkg_info = PackageService.build_package_bundle(
-        slug, version.strip(), source_files, entry_point.strip(), default_command.strip(), default_alias.strip()
+        slug, version.strip(), source_files, entry_point.strip(), commands_list
     )
 
     conn = get_db()
@@ -491,9 +498,9 @@ async def publish_action(request: Request,
 
     cursor.execute("""
     INSERT INTO assets (id, slug, name, type, asset_status, min_autocad, short_desc, full_desc,
-                        thumb_32_url, thumb_64_url, is_pro, default_command, default_alias,
+                        thumb_32_url, thumb_64_url, is_pro, commands_json,
                         tags, media_json, latest_version, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
         slug=excluded.slug,
         name=excluded.name,
@@ -505,15 +512,14 @@ async def publish_action(request: Request,
         thumb_32_url=COALESCE(NULLIF(excluded.thumb_32_url, ''), assets.thumb_32_url),
         thumb_64_url=COALESCE(NULLIF(excluded.thumb_64_url, ''), assets.thumb_64_url),
         is_pro=excluded.is_pro,
-        default_command=excluded.default_command,
-        default_alias=excluded.default_alias,
+        commands_json=excluded.commands_json,
         tags=excluded.tags,
         media_json=CASE WHEN excluded.media_json != '[]' THEN excluded.media_json ELSE assets.media_json END,
         latest_version=excluded.latest_version,
         updated_at=excluded.updated_at
     """, (asset_id.strip(), slug, name.strip(), type.strip(), asset_status.strip(), min_autocad,
           short_desc.strip(), full_desc.strip(), thumb_32_url, thumb_64_url,
-          1 if is_pro else 0, default_command.strip(), default_alias.strip(),
+          1 if is_pro else 0, json.dumps(commands_list),
           tags.strip(), json.dumps(media_data), version.strip(), now, now))
 
     cursor.execute("""
@@ -530,8 +536,6 @@ async def publish_action(request: Request,
         name="admin/publish.html",
         context={"request": request, "user": user, "success": f"Asset '{name}' published successfully."}
     )
-
-# --- Plans ---
 
 @router.get("/plans", response_class=HTMLResponse)
 def plans_page(request: Request):
@@ -598,8 +602,6 @@ def update_plan_action(request: Request,
         name="admin/plans.html",
         context={"request": request, "user": user, "plans": formatted, "success": f"Plan '{name}' successfully updated."}
     )
-
-# --- Reviews ---
 
 @router.get("/reviews", response_class=HTMLResponse)
 def reviews_page(request: Request):

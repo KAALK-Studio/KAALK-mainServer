@@ -1,10 +1,11 @@
+<!-- app/templates/admin/publish.html -->
 {% extends "base.html" %}
 {% block title %}Publish Asset Package - KAALK Admin{% endblock %}
 {% block content %}
 <div class="card">
     <h2>Publish / Update AutoCAD Asset</h2>
     <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 16px;">
-        Deploy assets with automatic bundle packaging, SHA-256 calculation, and entry point resolution.
+        Deploy assets with automatic bundle packaging, SHA-256 calculation, and multi-command suite mapping.
     </p>
 
     {% if success %}
@@ -14,7 +15,7 @@
     <form id="publishForm" action="/admin/publish" method="POST" enctype="multipart/form-data">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div>
-                <label>Asset ID (Unique Identifier, e.g. layer-sanitizer)</label>
+                <label>Asset ID (Unique Identifier, e.g. drafting-suite)</label>
                 <input type="text" name="asset_id" required>
             </div>
             <div>
@@ -31,7 +32,7 @@
             <div>
                 <label>Category</label>
                 <select name="type">
-                    <option value="tool">Tool</option>
+                    <option value="tool">Tool / Suite</option>
                     <option value="block">Block</option>
                     <option value="font">Font</option>
                     <option value="pattern">Pattern</option>
@@ -47,21 +48,26 @@
                 </select>
             </div>
             <div>
-                <label>Version (e.g. 1.2.0)</label>
+                <label>Version (e.g. 1.0.0)</label>
                 <input type="text" name="version" required>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <!-- Commands & Shortcuts Repeater -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div>
-                <label>AutoCAD Command Trigger</label>
-                <input type="text" name="default_command" placeholder="e.g. LYSAN">
+                <h3>Commands & Shortcuts</h3>
+                <p style="color: var(--muted); font-size: 0.8rem;">Define the AutoCAD commands and aliases provided by this package.</p>
             </div>
-            <div>
-                <label>Command Alias</label>
-                <input type="text" name="default_alias" placeholder="e.g. LS">
-            </div>
+            <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
         </div>
+
+        <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;"></div>
+        <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
         <label>Short Description (Catalog Index)</label>
         <input type="text" name="short_desc" required>
@@ -69,11 +75,11 @@
         <label>Full Documentation</label>
         <textarea name="full_desc" rows="3"></textarea>
 
-        <label>Tags (Comma separated, e.g. lisp, layers, blocks, drafting)</label>
-        <input type="text" name="tags" placeholder="e.g. lisp, layers, blocks">
+        <label>Tags (Comma separated, e.g. lisp, drafting, construction, lines)</label>
+        <input type="text" name="tags" placeholder="e.g. lisp, drafting, xlines">
 
         <label>Release Notes</label>
-        <textarea name="release_notes" rows="2" placeholder="- Fixed viewport redraw issue"></textarea>
+        <textarea name="release_notes" rows="2" placeholder="- Initial release"></textarea>
 
         <div style="margin: 8px 0 16px 0;">
             <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
@@ -118,6 +124,42 @@
 </div>
 
 <script>
+const commandsContainer = document.getElementById('commandsContainer');
+
+function addCommandRow(command = '', alias = '', title = '', description = '') {
+    const row = document.createElement('div');
+    row.className = 'command-row';
+    row.style = 'background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;';
+    row.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+            <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 8px; margin-bottom: 6px;">
+            <div>
+                <label style="font-size: 0.75rem;">Command Name (e.g. XLV)</label>
+                <input type="text" class="cmd-name" value="${command}" placeholder="XLV" required style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Alias (Optional, e.g. XV)</label>
+                <input type="text" class="cmd-alias" value="${alias}" placeholder="XV" style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Command Title</label>
+                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Construction Line" style="margin-bottom: 0;">
+            </div>
+        </div>
+        <div>
+            <label style="font-size: 0.75rem;">Description</label>
+            <input type="text" class="cmd-desc" value="${description}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+        </div>
+    `;
+    commandsContainer.appendChild(row);
+}
+
+// Add one default empty row
+addCommandRow();
+
 const sourcePicker = document.getElementById('sourcePicker');
 const sourcesQueue = document.getElementById('sourcesQueue');
 const entryPointInput = document.getElementById('selectedEntryPoint');
@@ -223,6 +265,21 @@ document.getElementById('publishForm').addEventListener('submit', (e) => {
         e.preventDefault();
         return;
     }
+
+    const commandRows = document.querySelectorAll('.command-row');
+    const commandsList = [];
+    commandRows.forEach(row => {
+        const cmdName = row.querySelector('.cmd-name').value.trim();
+        if (cmdName) {
+            commandsList.push({
+                command: cmdName,
+                alias: row.querySelector('.cmd-alias').value.trim(),
+                title: row.querySelector('.cmd-title').value.trim(),
+                description: row.querySelector('.cmd-desc').value.trim()
+            });
+        }
+    });
+    document.getElementById('commandsJsonPayload').value = JSON.stringify(commandsList);
     
     const fileInput = document.createElement('input');
     fileInput.type = 'file';

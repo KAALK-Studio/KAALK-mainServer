@@ -61,7 +61,6 @@ class PackageService:
             media_desc = descriptions[idx] if idx < len(descriptions) else ""
             media_url = f"/static/media/{slug}/{safe_filename}"
 
-            # Create 64x64 tiny thumbnail for image files
             thumb_url = media_url
             if kind == "image":
                 try:
@@ -87,7 +86,7 @@ class PackageService:
 
     @classmethod
     def build_package_bundle(cls, slug: str, version: str, files: List[UploadFile],
-                             entry_point: str, command: str, alias: str) -> dict:
+                             entry_point: str, commands: List[dict]) -> dict:
         asset_dir = os.path.join(PACKAGES_DIR, slug)
         os.makedirs(asset_dir, exist_ok=True)
 
@@ -102,8 +101,7 @@ class PackageService:
                 "slug": slug,
                 "version": version,
                 "entry_point": entry_point,
-                "command": command,
-                "alias": alias,
+                "commands": commands,
                 "files": included_files
             }
             zf.writestr("package.json", json.dumps(package_manifest, indent=2))

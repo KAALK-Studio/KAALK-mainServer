@@ -91,8 +91,21 @@
         <label>Short Description (Catalog Index)</label>
         <input type="text" name="short_desc" value="{{ asset.short_desc or '' }}" required>
 
-        <label>Full Documentation</label>
-        <textarea name="full_desc" rows="4">{{ asset.full_desc or '' }}</textarea>
+        <!-- Markdown Full Documentation with Live Preview -->
+        <div style="margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label style="margin-bottom: 0;">Full Documentation (Markdown Supported)</label>
+                <div style="display: flex; gap: 6px;">
+                    <button type="button" id="docWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleDocTab('write')">Write</button>
+                    <button type="button" id="docPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleDocTab('preview')">Live Preview</button>
+                </div>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 6px;">
+                Formatting tags: <code># Heading</code>, <code>**bold**</code>, <code>*italic*</code>, <code>`command`</code>, <code>- bullet item</code>, <code>> blockquote</code>
+            </div>
+            <textarea name="full_desc" id="fullDescInput" rows="6">{{ asset.full_desc or '' }}</textarea>
+            <div id="fullDescPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 12px; border-radius: 4px; min-height: 140px; font-size: 0.9rem; margin-bottom: 14px;"></div>
+        </div>
 
         <label>Tags (Comma separated)</label>
         <input type="text" name="tags" value="{{ asset.tags or '' }}">
@@ -143,6 +156,42 @@
 </div>
 
 <script>
+function renderMarkdownPreview(raw) {
+    if (!raw) return '<em style="color: var(--muted);">No text entered.</em>';
+    let html = raw
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/^### (.*$)/gim, '<h4 style="margin: 8px 0 4px 0; color: var(--text);">$1</h4>')
+        .replace(/^## (.*$)/gim, '<h3 style="margin: 10px 0 6px 0; color: var(--text);">$1</h3>')
+        .replace(/^# (.*$)/gim, '<h2 style="margin: 12px 0 8px 0; color: var(--text);">$1</h2>')
+        .replace(/^\> (.*$)/gim, '<blockquote style="border-left: 3px solid var(--accent); padding-left: 8px; margin: 6px 0; color: var(--muted); font-style: italic;">$1</blockquote>')
+        .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+        .replace(/`([^`]+)`/gim, '<code style="background: var(--surface); padding: 2px 4px; border-radius: 3px; color: var(--accent); font-family: monospace;">$1</code>')
+        .replace(/^\- (.*$)/gim, '<li style="margin-left: 18px;">$1</li>')
+        .replace(/\n$/gim, '<br />');
+    return html;
+}
+
+function toggleDocTab(mode) {
+    const input = document.getElementById('fullDescInput');
+    const preview = document.getElementById('fullDescPreview');
+    const writeBtn = document.getElementById('docWriteTab');
+    const prevBtn = document.getElementById('docPreviewTab');
+
+    if (mode === 'preview') {
+        preview.innerHTML = renderMarkdownPreview(input.value);
+        input.style.display = 'none';
+        preview.style.display = 'block';
+        prevBtn.style.background = 'var(--accent)';
+        writeBtn.style.background = 'var(--surface-alt)';
+    } else {
+        input.style.display = 'block';
+        preview.style.display = 'none';
+        writeBtn.style.background = 'var(--accent)';
+        prevBtn.style.background = 'var(--surface-alt)';
+    }
+}
+
 const commandsContainer = document.getElementById('commandsContainer');
 
 function addCommandRow(command = '', alias = '', title = '', description = '') {

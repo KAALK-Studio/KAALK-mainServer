@@ -72,7 +72,7 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
         raise HTTPException(status_code=404, detail="Asset not found.")
 
     cursor.execute("""
-    SELECT version, release_notes, download_url, file_size, sha256, created_at
+    SELECT version, release_notes, download_url, file_size, sha256, commands_json, created_at
     FROM asset_versions WHERE asset_id = ? ORDER BY id DESC
     """, (asset_id,))
     versions_rows = cursor.fetchall()
@@ -82,12 +82,18 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
     target_ver = version or asset["latest_version"]
 
     for v in versions_rows:
+        try:
+            v_commands = json.loads(v["commands_json"]) if v["commands_json"] else []
+        except Exception:
+            v_commands = []
+
         item = {
             "version": v["version"],
             "release_notes": v["release_notes"] or "",
             "download_url": v["download_url"],
             "file_size": v["file_size"],
             "sha256": v["sha256"],
+            "commands": v_commands,
             "created_at": v["created_at"]
         }
         version_history.append(item)
@@ -115,17 +121,19 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
     except Exception:
         media_list = []
 
-    try:
-        commands_list = json.loads(asset["commands_json"]) if asset["commands_json"] else []
-    except Exception:
-        commands_list = []
+    active_commands = selected_version_data["commands"] if (selected_version_data and selected_version_data.get("commands")) else []
+    if not active_commands:
+        try:
+            active_commands = json.loads(asset["commands_json"]) if asset["commands_json"] else []
+        except Exception:
+            active_commands = []
 
     return {
         "id": asset["id"],
         "slug": asset["slug"],
         "name": asset["name"],
         "full_description": asset["full_desc"] or "",
-        "commands": commands_list,
+        "commands": active_commands,
         "developer": {
             "id": asset["dev_id"] or "dev_kaalk",
             "name": asset["dev_name"] or "KAALK Studio",

@@ -3,7 +3,7 @@ import os
 import json
 import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Request, Form, UploadFile, File, HTTPException
+from fastapi import APIRouter, Request, Form, UploadFile, File, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from app.database import get_db
 from app.security import hash_password, get_current_user_from_cookie
@@ -391,8 +391,10 @@ async def update_asset_action(request: Request,
         context={"request": request, "user": user, "asset": updated_asset, "success": "Asset updated successfully."}
     )
 
+# --- Version Management & Deployment ---
+
 @router.get("/assets/{asset_id}/versions", response_class=HTMLResponse)
-def asset_versions_page(request: Request, asset_id: str):
+def asset_versions_page(request: Request, asset_id: str, success: Optional[str] = Query(None)):
     user = require_admin(request)
     conn = get_db()
     cursor = conn.cursor()
@@ -409,8 +411,84 @@ def asset_versions_page(request: Request, asset_id: str):
     return templates.TemplateResponse(
         request=request,
         name="admin/versions.html",
-        context={"request": request, "user": user, "asset": asset, "versions": versions}
+        context={"request": request, "user": user, "asset": asset, "versions": versions, "success": success}
     )
+
+@router.get("/assets/{asset_id}/versions/new", response_class=HTMLResponse)
+def deploy_version_page(request: Request, asset_id: str):
+    user = require_admin(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
+    asset = cursor.fetchone()
+    conn.close()
+
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found.")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/version_deploy.html",
+        context={"request": request, "user": user, "asset": dict(asset), "error": None}
+    )
+
+@router.post("/assets/{asset_id}/versions/new", response_class=HTMLResponse)
+async def deploy_version_action(request: Request,
+                                asset_id: str,
+                                version: str = Form(...),
+                                release_notes: str = Form(""),
+                                entry_point: str = Form(...),
+                                source_files: List[UploadFile] = File(...)):
+    user = require_admin(request)
+    version = version.strip()
+    entry_point = entry_point.strip()
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
+    asset = cursor.fetchone()
+    if not asset:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Asset not found.")
+
+    cursor.execute("SELECT id FROM asset_versions WHERE asset_id = ? AND version = ?", (asset_id, version))
+    if cursor.fetchone():
+        conn.close()
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/version_deploy.html",
+            context={
+                "request": request,
+                "user": user,
+                "asset": dict(asset),
+                "error": f"Version '{version}' is already deployed for this asset."
+            }
+        )
+
+    slug = asset["slug"]
+    try:
+        commands_list = json.loads(asset["commands_json"]) if asset["commands_json"] else []
+    except Exception:
+        commands_list = []
+
+    pkg_info = PackageService.build_package_bundle(
+        slug, version, source_files, entry_point, commands_list
+    )
+
+    now = datetime.datetime.utcnow().isoformat()
+    cursor.execute("""
+    INSERT INTO asset_versions (asset_id, version, release_notes, download_url, file_size, sha256, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (asset_id, version, release_notes.strip(), pkg_info["download_url"], pkg_info["file_size"], pkg_info["sha256"], now))
+
+    cursor.execute("""
+    UPDATE assets SET latest_version = ?, updated_at = ? WHERE id = ?
+    """, (version, now, asset_id))
+
+    conn.commit()
+    conn.close()
+
+    return RedirectResponse(f"/admin/assets/{asset_id}/versions?success=Version+{version}+deployed+successfully", status_code=302)
 
 @router.post("/assets/{asset_id}/versions/{version}/delete")
 def delete_asset_version(request: Request, asset_id: str, version: str):
@@ -430,7 +508,7 @@ def delete_asset_version(request: Request, asset_id: str, version: str):
     conn.close()
 
     PackageService.delete_version_archive(asset["slug"], version, remaining)
-    return RedirectResponse(f"/admin/assets/{asset_id}/versions", status_code=302)
+    return RedirectResponse(f"/admin/assets/{asset_id}/versions?success=Version+{version}+removed", status_code=302)
 
 @router.post("/assets/{asset_id}/delete")
 def delete_asset_action(request: Request, asset_id: str):
@@ -443,6 +521,8 @@ def delete_asset_action(request: Request, asset_id: str):
     conn.commit()
     conn.close()
     return RedirectResponse("/admin/assets", status_code=302)
+
+# --- Publishing ---
 
 @router.get("/publish", response_class=HTMLResponse)
 def publish_page(request: Request):
@@ -537,6 +617,8 @@ async def publish_action(request: Request,
         context={"request": request, "user": user, "success": f"Asset '{name}' published successfully."}
     )
 
+# --- Plans ---
+
 @router.get("/plans", response_class=HTMLResponse)
 def plans_page(request: Request):
     user = require_admin(request)
@@ -602,6 +684,8 @@ def update_plan_action(request: Request,
         name="admin/plans.html",
         context={"request": request, "user": user, "plans": formatted, "success": f"Plan '{name}' successfully updated."}
     )
+
+# --- Reviews ---
 
 @router.get("/reviews", response_class=HTMLResponse)
 def reviews_page(request: Request):

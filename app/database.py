@@ -34,7 +34,7 @@ def init_db():
     );
     """)
 
-    # 2. Assets table with commands_json
+    # 2. Assets table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS assets (
         id TEXT PRIMARY KEY,
@@ -64,7 +64,7 @@ def init_db():
     );
     """)
 
-    # 3. Asset Versions table
+    # 3. Asset Versions table with version-bound commands_json
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS asset_versions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,6 +74,7 @@ def init_db():
         download_url TEXT NOT NULL,
         file_size INTEGER DEFAULT 0,
         sha256 TEXT NOT NULL,
+        commands_json TEXT DEFAULT '[]',
         created_at TEXT NOT NULL,
         FOREIGN KEY (asset_id) REFERENCES assets(id),
         UNIQUE(asset_id, version)
@@ -142,17 +143,17 @@ def init_db():
     if cursor.fetchone()["count"] == 0:
         free_feats = json.dumps([
             "Palette Asset Discovery",
-            "Free Community LISP Tools",
+            "Free Community Tools",
             "Command Alias Registration"
         ])
         monthly_feats = json.dumps([
-            "Full Access to Pro LISP & Tools",
+            "Full Access to Pro Suites & Tools",
             "Direct Command Integration",
             "Automatic Background Updates",
             "30 Days Full Access"
         ])
         annual_feats = json.dumps([
-            "Full Access to Pro LISP & Tools",
+            "Full Access to Pro Suites & Tools",
             "Direct Command Integration",
             "Priority Support Channel",
             "Pay for 10 Months, Get 12 Months",
@@ -165,7 +166,7 @@ def init_db():
         ])
         enterprise_feats = json.dumps([
             "Centralized Multi-Seat Licensing",
-            "Custom In-House LISP Compilation",
+            "Custom In-House Tool Deployment",
             "Dedicated Private Cloud Asset Host",
             "24/7 SLA Technical Consultation"
         ])

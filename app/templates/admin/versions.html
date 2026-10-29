@@ -1,13 +1,21 @@
+<!-- app/templates/admin/versions.html -->
 {% extends "base.html" %}
 {% block title %}Manage Versions - {{ asset.name }}{% endblock %}
 {% block content %}
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <div>
         <h2>Versions for: {{ asset.name }}</h2>
-        <p style="color: var(--muted); font-size: 0.85rem;">Active Latest Version: <strong>{{ asset.latest_version }}</strong></p>
+        <p style="color: var(--muted); font-size: 0.85rem;">Active Latest Version: <strong style="color: var(--accent);">{{ asset.latest_version or 'None' }}</strong></p>
     </div>
-    <a href="/admin/assets" class="btn" style="background: var(--surface-alt);">Back to Assets</a>
+    <div style="display: flex; gap: 8px;">
+        <a href="/admin/assets/{{ asset.id }}/versions/new" class="btn btn-success">+ Deploy New Version</a>
+        <a href="/admin/assets" class="btn" style="background: var(--surface-alt);">Back to Assets</a>
+    </div>
 </div>
+
+{% if success %}
+    <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 16px;">{{ success }}</div>
+{% endif %}
 
 <div class="card">
     <table>
@@ -18,7 +26,7 @@
                 <th>File Size</th>
                 <th>SHA-256 Hash</th>
                 <th>Deployed At</th>
-                <th>Action</th>
+                <th style="text-align: center;">Action</th>
             </tr>
         </thead>
         <tbody>
@@ -30,17 +38,22 @@
                         <span class="badge badge-pro" style="margin-left: 4px;">LATEST</span>
                     {% endif %}
                 </td>
-                <td style="max-width: 250px; white-space: pre-line; font-size: 0.8rem; color: var(--muted);">{{ v.release_notes }}</td>
+                <td style="max-width: 280px; white-space: pre-line; font-size: 0.8rem; color: var(--muted);">{{ v.release_notes }}</td>
                 <td>{{ "%.2f"|format(v.file_size / 1024) }} KB</td>
                 <td style="font-family: monospace; font-size: 0.75rem;">{{ v.sha256[:16] }}...</td>
                 <td>{{ v.created_at[:10] }}</td>
-                <td>
-                    <form action="/admin/assets/{{ asset.id }}/versions/{{ v.version }}/delete" method="POST" onsubmit="return confirm('Delete this version? If this is the latest version, the system will automatically roll back to the previous version.');">
+                <td style="text-align: center;">
+                    <form action="/admin/assets/{{ asset.id }}/versions/{{ v.version }}/delete" method="POST" onsubmit="return confirm('Delete this version? If this is the latest version, the system will automatically roll back to the previous stable release.');">
                         <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;">Remove Version</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
+            {% if not versions %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: var(--muted); padding: 20px;">No version packages deployed yet. Click '+ Deploy New Version' above.</td>
+            </tr>
+            {% endif %}
         </tbody>
     </table>
 </div>

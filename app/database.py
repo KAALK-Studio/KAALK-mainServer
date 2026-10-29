@@ -1,3 +1,4 @@
+# app/database.py
 import sqlite3
 import datetime
 import json
@@ -13,7 +14,7 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
 
-    # 1. Users table (with required phone and last_ip)
+    # 1. Users table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,7 +34,7 @@ def init_db():
     );
     """)
 
-    # 2. Assets table with asset_status (beta, stable, etc.)
+    # 2. Assets table with commands_json
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS assets (
         id TEXT PRIMARY KEY,
@@ -54,8 +55,7 @@ def init_db():
         dev_id TEXT,
         dev_name TEXT,
         dev_website TEXT,
-        default_command TEXT,
-        default_alias TEXT,
+        commands_json TEXT DEFAULT '[]',
         tags TEXT,
         media_json TEXT,
         latest_version TEXT,
@@ -95,7 +95,7 @@ def init_db():
     );
     """)
 
-    # 5. Subscription Plans table with discount expiration and enterprise support
+    # 5. Subscription Plans table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS subscription_plans (
         id TEXT PRIMARY KEY,
@@ -112,7 +112,7 @@ def init_db():
     );
     """)
 
-    # 6. Payments and Transactions
+    # 6. Payments table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS payments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,7 +137,7 @@ def init_db():
         VALUES ('admin@kaalk.ir', '+989120000000', ?, 'Admin', 'KAALK', 1, 0, 'premium', '5.200.200.1', ?)
         """, (hash_password("Admin@12345"), now))
 
-    # Seed 4 Standard Plans (Free, Monthly, Annual, Occasional Promo, Enterprise)
+    # Seed Subscription Plans
     cursor.execute("SELECT COUNT(*) as count FROM subscription_plans")
     if cursor.fetchone()["count"] == 0:
         free_feats = json.dumps([
@@ -155,13 +155,13 @@ def init_db():
             "Full Access to Pro LISP & Tools",
             "Direct Command Integration",
             "Priority Support Channel",
-            "Pay for 10 Months, Get 12 Months (2 Months Free)",
+            "Pay for 10 Months, Get 12 Months",
             "Automatic Annual Renewal"
         ])
         promo_feats = json.dumps([
-            "Festival & Birthday Special Access",
+            "Festival Special Access",
             "Full Pro Access During Event",
-            "Bonus Architecture Pattern Bundles"
+            "Bonus Pattern Bundles"
         ])
         enterprise_feats = json.dumps([
             "Centralized Multi-Seat Licensing",
@@ -170,7 +170,6 @@ def init_db():
             "24/7 SLA Technical Consultation"
         ])
 
-        # Monthly = 350,000 Tomans. Annual = 10x Monthly = 3,500,000 Tomans (2 months free)
         monthly_price = 350000
         annual_price = monthly_price * 10
 
@@ -179,8 +178,8 @@ def init_db():
         VALUES
         ('free', 'Free Tier', 0, 0, 'Permanent', 0, '', NULL, 'Basic drafting utilities and discovery.', ?, 1),
         ('monthly', 'Monthly Pro', ?, 30, 'Monthly', 0, '', NULL, 'Flexible professional monthly subscription.', ?, 1),
-        ('annual', 'Annual Pro', ?, 365, 'Yearly', 17, '2 Months Free', NULL, 'Annual pass with 2 months completely free (10x Monthly).', ?, 1),
-        ('promo', 'Festival / Birthday Promo', 245000, 30, 'One-time', 30, '30% Discount', NULL, 'Limited-time special occasion promotional access.', ?, 1),
+        ('annual', 'Annual Pro', ?, 365, 'Yearly', 17, '2 Months Free', NULL, 'Annual pass with 2 months free.', ?, 1),
+        ('promo', 'Special Promo', 245000, 30, 'One-time', 30, '30% Discount', NULL, 'Limited-time special occasion promotional access.', ?, 1),
         ('enterprise', 'Enterprise Organization', 15000000, 365, 'Yearly', 0, 'Custom Fleet', NULL, 'Dedicated multi-seat deployment for engineering firms.', ?, 0)
         """, (free_feats, monthly_price, monthly_feats, annual_price, annual_feats, promo_feats, enterprise_feats))
 

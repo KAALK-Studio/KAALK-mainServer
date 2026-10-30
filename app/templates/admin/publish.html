@@ -5,7 +5,7 @@
 <div class="card">
     <h2>Publish / Update AutoCAD Asset</h2>
     <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 16px;">
-        Deploy assets with automatic bundle packaging, SHA-256 calculation, multi-command suites, and Markdown documentation.
+        Deploy assets with automatic bundle packaging, xxHash32 identifier generation, multi-command suites, and Markdown documentation.
     </p>
 
     {% if success %}
@@ -13,14 +13,11 @@
     {% endif %}
 
     <form id="publishForm" action="/admin/publish" method="POST" enctype="multipart/form-data">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
             <div>
-                <label>Asset ID (Unique Identifier, e.g. drafting-suite)</label>
-                <input type="text" name="asset_id" required>
-            </div>
-            <div>
-                <label>Slug (Storage Path)</label>
-                <input type="text" name="slug" required>
+                <label>Asset Slug (Unique Storage Path, e.g. drafting-suite)</label>
+                <input type="text" name="slug" placeholder="e.g. drafting-suite" required>
+                <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 8px;">Asset ID will be automatically calculated via xxHash32 based on this slug.</small>
             </div>
         </div>
 
@@ -112,8 +109,18 @@
 
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
+        <!-- Section 1: Icon and Logo Selection -->
+        <div>
+            <h3>Asset Icon & Identity</h3>
+            <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select square PNG/JPG logo (automatically resizes into 32x32 and 64x64 formats).</p>
+            <input type="file" name="icon_file" accept="image/*">
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <!-- Section 2: Package Source & Dependency Files -->
         <h3>Package Source & Dependency Files</h3>
-        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select any .dll, .dcl, .dwg files. Choose which is the Main Entry Point.</p>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select executable .dll and dependency files (.dcl, .dwg). Designate the Main Entry Point.</p>
 
         <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
             <input type="file" id="sourcePicker" multiple>
@@ -124,8 +131,9 @@
 
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
 
+        <!-- Section 3: Tutorial Media & Screenshots -->
         <h3>Tutorial Media & Screenshots (Unlimited)</h3>
-        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Add screenshots, workflow images, or MP4 demo videos.</p>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Queue visual guides, screenshots, or MP4 demo videos.</p>
 
         <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
             <div style="display: flex; gap: 10px; align-items: center;">
@@ -133,13 +141,6 @@
                 <button type="button" class="btn" onclick="addMediaItem()">Queue Media</button>
             </div>
             <div id="mediaQueue" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;"></div>
-        </div>
-
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
-
-        <div>
-            <label>Square Icon (PNG/JPG - automatically generates 32x32 and 64x64 formats)</label>
-            <input type="file" name="icon_file" accept="image/*">
         </div>
 
         <button type="submit" class="btn btn-success" style="padding: 10px 24px; margin-top: 15px;">Build & Compile Bundle</button>

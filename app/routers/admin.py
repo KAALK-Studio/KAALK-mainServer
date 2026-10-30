@@ -558,7 +558,6 @@ def publish_page(request: Request):
 
 @router.post("/publish", response_class=HTMLResponse)
 async def publish_action(request: Request,
-                         asset_id: str = Form(...),
                          slug: str = Form(...),
                          name: str = Form(...),
                          type: str = Form(...),
@@ -576,9 +575,13 @@ async def publish_action(request: Request,
                          source_files: List[UploadFile] = File(...),
                          media_files: List[UploadFile] = File([]),
                          media_titles: List[str] = Form([]),
-                         media_descriptions: List[str] = Form([])):
+                         media_descriptions: List[str] = Form([]),
+                         asset_id: Optional[str] = Form(None)):
     user = require_admin(request)
     slug = slug.strip().lower()
+
+    # Automatically derive deterministic xxHash32 Asset ID if not explicitly provided
+    computed_asset_id = asset_id.strip() if (asset_id and asset_id.strip()) else PackageService.generate_asset_id(slug)
 
     thumb_32_url, thumb_64_url = "", ""
     if icon_file and icon_file.filename:
@@ -620,7 +623,7 @@ async def publish_action(request: Request,
         media_json=CASE WHEN excluded.media_json != '[]' THEN excluded.media_json ELSE assets.media_json END,
         latest_version=excluded.latest_version,
         updated_at=excluded.updated_at
-    """, (asset_id.strip(), slug, name.strip(), type.strip(), asset_status.strip(), min_autocad,
+    """, (computed_asset_id, slug, name.strip(), type.strip(), asset_status.strip(), min_autocad,
           short_desc.strip(), full_desc.strip(), thumb_32_url, thumb_64_url,
           1 if is_pro else 0, json.dumps(commands_list),
           tags.strip(), json.dumps(media_data), version.strip(), now, now))
@@ -628,7 +631,7 @@ async def publish_action(request: Request,
     cursor.execute("""
     INSERT OR REPLACE INTO asset_versions (asset_id, version, release_notes, download_url, file_size, sha256, commands_json, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (asset_id.strip(), version.strip(), release_notes.strip(), pkg_info["download_url"],
+    """, (computed_asset_id, version.strip(), release_notes.strip(), pkg_info["download_url"],
           pkg_info["file_size"], pkg_info["sha256"], json.dumps(commands_list), now))
 
     conn.commit()
@@ -637,7 +640,7 @@ async def publish_action(request: Request,
     return templates.TemplateResponse(
         request=request,
         name="admin/publish.html",
-        context={"request": request, "user": user, "success": f"Asset '{name}' published successfully."}
+        context={"request": request, "user": user, "success": f"Asset '{name}' (ID: {computed_asset_id}) published successfully."}
     )
 
 # --- Plans ---

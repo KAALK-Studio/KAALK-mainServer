@@ -5,12 +5,86 @@ import hashlib
 import zipfile
 import json
 import uuid
+import struct
 from typing import List, Tuple
 from fastapi import UploadFile
 from PIL import Image
 from app.config import PACKAGES_DIR, MEDIA_DIR
 
 class PackageService:
+    @staticmethod
+    def xxhash32(data: bytes, seed: int = 0) -> int:
+        PRIME32_1 = 0x9E3779B1
+        PRIME32_2 = 0x85EBCA77
+        PRIME32_3 = 0xC2B2AE3D
+        PRIME32_4 = 0x27D4EB2F
+        PRIME32_5 = 0x165667B1
+
+        length = len(data)
+        if length >= 16:
+            limit = length - 16
+            v1 = (seed + PRIME32_1 + PRIME32_2) & 0xFFFFFFFF
+            v2 = (seed + PRIME32_2) & 0xFFFFFFFF
+            v3 = (seed + 0) & 0xFFFFFFFF
+            v4 = (seed - PRIME32_1) & 0xFFFFFFFF
+
+            offset = 0
+            while offset <= limit:
+                p1, p2, p3, p4 = struct.unpack_from('<4I', data, offset)
+                v1 = (v1 + p1 * PRIME32_2) & 0xFFFFFFFF
+                v1 = ((v1 << 13) | (v1 >> 19)) & 0xFFFFFFFF
+                v1 = (v1 * PRIME32_1) & 0xFFFFFFFF
+
+                v2 = (v2 + p2 * PRIME32_2) & 0xFFFFFFFF
+                v2 = ((v2 << 13) | (v2 >> 19)) & 0xFFFFFFFF
+                v2 = (v2 * PRIME32_1) & 0xFFFFFFFF
+
+                v3 = (v3 + p3 * PRIME32_2) & 0xFFFFFFFF
+                v3 = ((v3 << 13) | (v3 >> 19)) & 0xFFFFFFFF
+                v3 = (v3 * PRIME32_1) & 0xFFFFFFFF
+
+                v4 = (v4 + p4 * PRIME32_2) & 0xFFFFFFFF
+                v4 = ((v4 << 13) | (v4 >> 19)) & 0xFFFFFFFF
+                v4 = (v4 * PRIME32_1) & 0xFFFFFFFF
+                offset += 16
+
+            h32 = (((v1 << 1) | (v1 >> 31)) +
+                   ((v2 << 7) | (v2 >> 25)) +
+                   ((v3 << 12) | (v3 >> 20)) +
+                   ((v4 << 18) | (v4 >> 14))) & 0xFFFFFFFF
+        else:
+            h32 = (seed + PRIME32_5) & 0xFFFFFFFF
+
+        h32 = (h32 + length) & 0xFFFFFFFF
+
+        offset = length - (length % 16) if length >= 16 else 0
+        while offset <= length - 4:
+            p = struct.unpack_from('<I', data, offset)[0]
+            h32 = (h32 + p * PRIME32_3) & 0xFFFFFFFF
+            h32 = ((h32 << 17) | (h32 >> 15)) & 0xFFFFFFFF
+            h32 = (h32 * PRIME32_4) & 0xFFFFFFFF
+            offset += 4
+
+        while offset < length:
+            h32 = (h32 + data[offset] * PRIME32_5) & 0xFFFFFFFF
+            h32 = ((h32 << 11) | (h32 >> 21)) & 0xFFFFFFFF
+            h32 = (h32 * PRIME32_1) & 0xFFFFFFFF
+            offset += 1
+
+        h32 = (h32 ^ (h32 >> 15)) & 0xFFFFFFFF
+        h32 = (h32 * PRIME32_2) & 0xFFFFFFFF
+        h32 = (h32 ^ (h32 >> 13)) & 0xFFFFFFFF
+        h32 = (h32 * PRIME32_3) & 0xFFFFFFFF
+        h32 = (h32 ^ (h32 >> 16)) & 0xFFFFFFFF
+
+        return h32
+
+    @classmethod
+    def generate_asset_id(cls, slug: str) -> str:
+        clean_slug = slug.strip().lower()
+        hash_val = cls.xxhash32(clean_slug.encode("utf-8"))
+        return f"{hash_val:08x}"
+
     @staticmethod
     def calculate_sha256(file_path: str) -> str:
         hasher = hashlib.sha256()

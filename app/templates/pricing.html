@@ -1,8 +1,11 @@
+<!-- app/templates/pricing.html -->
 {% extends "base.html" %}
-{% block title %}{{ t('nav_pricing') }} - KAALK{% endblock %}
+{% block title %}Pricing & Plans - KAALK{% endblock %}
 {% block content %}
-<h2 style="text-align: center; margin-bottom: 8px;">{{ t('nav_pricing') }}</h2>
-<p style="text-align: center; color: var(--muted); margin-bottom: 30px;">Access specialized AutoCAD plugins, scripts, and updates directly inside your palette.</p>
+<div style="text-align: center; margin-bottom: 30px;">
+    <h2>{{ page.headline or 'Professional Subscription Plans' }}</h2>
+    <p style="color: var(--muted); margin-top: 6px;">{{ page.subheadline or 'Access specialized AutoCAD plugins, scripts, and updates directly inside your palette.' }}</p>
+</div>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
     {% for plan in plans %}
@@ -31,7 +34,7 @@
             <ul style="list-style: none; margin-top: 15px; font-size: 0.9rem;">
                 {% for feature in plan.features %}
                 <li style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-                    <span style="color: var(--accent); font-weight: bold;">[x]</span> {{ feature }}
+                    <span style="color: var(--accent); font-weight: bold;">✓</span> {{ feature }}
                 </li>
                 {% endfor %}
             </ul>
@@ -46,5 +49,9 @@
         </div>
     </div>
     {% endfor %}
+</div>
+
+<div class="card" style="margin-top: 30px; text-align: center;">
+    <p style="color: var(--muted); font-size: 0.85rem;">{{ page.guarantee_text or 'Instant activation upon payment completion. Cancel or upgrade anytime.' }}</p>
 </div>
 {% endblock %}

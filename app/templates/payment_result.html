@@ -1,0 +1,25 @@
+<!-- app/templates/payment_result.html -->
+{% extends "base.html" %}
+{% block title %}Transaction Status - KAALK Payment Gateway{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 520px; margin: 40px auto; text-align: center;">
+    {% if success %}
+        <div style="font-size: 3rem; color: var(--success); margin-bottom: 10px;">✔</div>
+        <h2 style="color: var(--success);">Payment Successful</h2>
+        <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;">Your subscription has been activated.</p>
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+        <div style="background: var(--surface-alt); padding: 14px; border-radius: 6px; text-align: left; font-size: 0.9rem; line-height: 1.8;">
+            <div><span>Plan:</span> <strong>{{ payment.plan_name }}</strong></div>
+            <div><span>Reference ID:</span> <strong style="color: var(--accent);">{{ ref_id }}</strong></div>
+            <div><span>Amount Paid:</span> <strong>{{ "{:,}".format(payment.amount_toman) }} Tomans</strong></div>
+        </div>
+        <a href="/dashboard" class="btn btn-success" style="width: 100%; margin-top: 20px; padding: 12px;">Go to Dashboard</a>
+    {% else %}
+        <div style="font-size: 3rem; color: var(--danger); margin-bottom: 10px;">✕</div>
+        <h2 style="color: var(--danger);">Payment Incomplete</h2>
+        <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;">{{ message }}</p>
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+        <a href="/pricing" class="btn btn-outline" style="width: 100%; padding: 12px;">Return to Pricing</a>
+    {% endif %}
+</div>
+{% endblock %}

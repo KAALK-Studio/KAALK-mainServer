@@ -3,29 +3,29 @@
 {% block title %}About Us - KAALK Platform{% endblock %}
 {% block content %}
 <div style="max-width: 840px; margin: auto; padding: 20px 0;">
-    <h1 style="font-size: 2.4rem; margin-bottom: 14px;">Architectural Engineering Meets Cloud Runtimes.</h1>
+    <h1 style="font-size: 2.4rem; margin-bottom: 14px;">{{ page.headline or 'Architectural Engineering Meets Cloud Runtimes.' }}</h1>
     <p style="font-size: 1.1rem; color: var(--muted); line-height: 1.6; margin-bottom: 30px;">
-        KAALK Asset Manager was founded by architects and CAD engineers who spent decades battling broken network shares, unversioned LISP scripts, and system crashes caused by static command collisions.
+        {{ page.subheadline or 'KAALK Asset Manager was founded by architects and CAD engineers who spent decades battling broken network shares, unversioned LISP scripts, and system crashes caused by static command collisions.' }}
     </p>
 
     <div class="card">
-        <h3 style="color: var(--accent); margin-bottom: 8px;">Our Core Engineering Mission</h3>
+        <h3 style="color: var(--accent); margin-bottom: 8px;">{{ page.mission_title or 'Our Core Engineering Mission' }}</h3>
         <p style="color: var(--text); line-height: 1.7; font-size: 0.95rem;">
-            Our mission is to establish a verified, cloud-synced runtime for AutoCAD. We believe CAD operators should discover, test, and run professional utilities without leaving their viewport, without wrestling with complex installation paths, and with guaranteed rollback safety.
+            {{ page.mission_desc or 'Our mission is to establish a verified, cloud-synced runtime for AutoCAD. We believe CAD operators should discover, test, and run professional utilities without leaving their viewport.' }}
         </p>
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         <div class="card">
-            <h4>Strict 5-Layer Architectural Integrity</h4>
+            <h4>{{ page.pillar1_title or 'Strict 5-Layer Architectural Integrity' }}</h4>
             <p style="color: var(--muted); font-size: 0.85rem; line-height: 1.6; margin-top: 6px;">
-                Our AutoCAD client assembly strictly isolates Security (DPAPI), Core API, Presenters, WPF UI, and Host wrappers. It runs zero external NuGet dependencies for maximum stability in enterprise environments.
+                {{ page.pillar1_desc or 'Our AutoCAD client assembly strictly isolates Security (DPAPI), Core API, Presenters, WPF UI, and Host wrappers with zero NuGet dependencies.' }}
             </p>
         </div>
         <div class="card">
-            <h4>Pure Command Proxy & Hot-Plug</h4>
+            <h4>{{ page.pillar2_title or 'Pure Command Proxy & Hot-Plug' }}</h4>
             <p style="color: var(--muted); font-size: 0.85rem; line-height: 1.6; margin-top: 6px;">
-                By moving away from static hard-coded AutoCAD attributes, tools hot-swap instantly across versions without AutoCAD reboots and cleanly detach upon uninstallation.
+                {{ page.pillar2_desc or 'By moving away from static hard-coded AutoCAD attributes, tools hot-swap instantly across versions without AutoCAD reboots and cleanly detach upon uninstallation.' }}
             </p>
         </div>
     </div>

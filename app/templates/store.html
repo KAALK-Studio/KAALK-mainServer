@@ -2,19 +2,19 @@
 {% extends "base.html" %}
 {% block title %}AutoCAD Store Showcase | KAALK{% endblock %}
 {% block content %}
-<div style="margin-bottom: 30px;">
-    <h2>CAD Asset & Tool Showcase</h2>
+<div style="margin-bottom: 24px;">
+    <h2>{{ page.headline or 'CAD Asset & Tool Showcase' }}</h2>
     <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;">
-        Browse the catalog of verified tools, dynamic blocks, patterns, and LISP routines.
+        {{ page.subheadline or 'Browse the catalog of verified tools, dynamic blocks, patterns, and LISP routines.' }}
     </p>
 </div>
 
 <!-- Notice Banner -->
 <div class="card" style="background: rgba(0, 122, 204, 0.08); border-color: var(--accent); padding: 16px; display: flex; align-items: center; justify-content: space-between;">
     <div style="font-size: 0.9rem;">
-        <strong style="color: var(--accent);">Direct In-CAD Execution Only:</strong>
+        <strong style="color: var(--accent);">{{ page.banner_title or 'Direct In-CAD Execution Only' }}:</strong>
         <span style="color: var(--muted); margin-left: 6px;">
-            To maintain cryptographic integrity and dynamic hot-plugging, assets are discovered and installed exclusively inside AutoCAD via the KAALK palette.
+            {{ page.banner_text or 'To maintain cryptographic integrity and dynamic hot-plugging, assets are discovered and installed exclusively inside AutoCAD via the KAALK palette.' }}
         </span>
     </div>
     <a href="/download" class="btn" style="font-size: 0.75rem; white-space: nowrap;">Get Plugin Client</a>

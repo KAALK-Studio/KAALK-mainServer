@@ -1,8 +1,10 @@
+<!-- app/templates/base.html -->
 <!DOCTYPE html>
 <html lang="{{ locale.code }}" dir="{{ locale.dir }}">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}{{ t('portal_title') }}{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}KAALK | Modern AutoCAD Asset & Plugin Platform{% endblock %}</title>
     
     {% if locale.font_url %}
     <link rel="stylesheet" href="{{ locale.font_url }}">
@@ -10,16 +12,17 @@
 
     <style>
         :root {
-            --bg: #1e1e20;
-            --surface: #252526;
-            --surface-alt: #333337;
+            --bg: #141416;
+            --surface: #1e1e24;
+            --surface-alt: #292932;
             --accent: #007acc;
-            --text: #f1f1f1;
-            --muted: #a0a0a5;
-            --border: #3f3f46;
-            --danger: #d13438;
-            --success: #107c41;
-            --warning: #ff9800;
+            --accent-glow: rgba(0, 122, 204, 0.35);
+            --text: #f4f4f6;
+            --muted: #9a9aa2;
+            --border: #353540;
+            --danger: #e8384f;
+            --success: #129d53;
+            --gold: #f3b738;
         }
         * {
             box-sizing: border-box;
@@ -36,95 +39,202 @@
             direction: {{ locale.dir }};
             text-align: {% if locale.dir == 'rtl' %}right{% else %}left{% endif %};
         }
-        nav {
-            background: var(--surface);
+        header {
+            background: rgba(30, 30, 36, 0.85);
+            backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border);
-            padding: 12px 24px;
+            padding: 14px 28px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
-        nav .brand { font-weight: bold; font-size: 1.1rem; color: var(--accent); text-decoration: none; }
-        nav .links a {
-            color: var(--text);
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             text-decoration: none;
-            {% if locale.dir == 'rtl' %}margin-right: 18px;{% else %}margin-left: 18px;{% endif %}
-            font-size: 0.9rem;
         }
-        nav .links a:hover { color: var(--accent); }
+        .brand-logo {
+            width: 30px;
+            height: 30px;
+            background: var(--accent);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 900;
+            font-size: 1.1rem;
+        }
+        .brand-text {
+            font-weight: 800;
+            font-size: 1.15rem;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+        nav.nav-links {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        nav.nav-links a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.15s ease;
+        }
+        nav.nav-links a:hover, nav.nav-links a.active {
+            color: #fff;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: var(--accent);
+            color: #fff;
+            padding: 7px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .btn:hover {
+            filter: brightness(1.15);
+        }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-outline:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
         .lang-select {
             background: var(--surface-alt);
             color: var(--text);
             border: 1px solid var(--border);
-            padding: 4px 8px;
+            padding: 4px 10px;
             border-radius: 4px;
             font-size: 0.8rem;
             cursor: pointer;
-            {% if locale.dir == 'rtl' %}margin-right: 15px;{% else %}margin-left: 15px;{% endif %}
         }
-        .container { flex: 1; max-width: 1100px; margin: 30px auto; padding: 0 15px; width: 100%; }
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 24px; margin-bottom: 20px; }
-        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--accent); color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; border: none; cursor: pointer; font-size: 0.85rem; font-weight: bold; height: 28px; vertical-align: middle; }
-        .btn-success { background: var(--success); }
-        .btn-danger { background: var(--danger); }
-        
-        /* Unified 28px button icon with transparent fill and stroke */
-        .btn-icon {
-            display: inline-flex;
+        .container {
+            flex: 1;
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+            width: 100%;
+        }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+        .badge-pro { background: var(--gold); color: #111; }
+        .badge-free { background: var(--surface-alt); color: var(--muted); }
+        .badge-stable { background: rgba(18, 157, 83, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .badge-beta { background: rgba(232, 56, 79, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+
+        footer {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 40px 20px 24px 20px;
+            margin-top: 60px;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        .footer-grid {
+            max-width: 1200px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .footer-col h4 {
+            color: #fff;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+        }
+        .footer-col a {
+            color: var(--muted);
+            text-decoration: none;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .footer-col a:hover { color: var(--accent); }
+        .footer-bottom {
+            max-width: 1200px;
+            margin: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            padding: 0;
+        }
+        input, select, textarea {
+            width: 100%;
             background: var(--surface-alt);
             border: 1px solid var(--border);
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            vertical-align: middle;
-            transition: all 0.15s ease;
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 5px;
+            margin-top: 6px;
+            margin-bottom: 14px;
+            font-size: 0.9rem;
         }
-        .btn-icon:hover {
-            background: var(--surface);
-            border-color: var(--accent);
-        }
-        .btn-icon svg {
-            width: 15px;
-            height: 15px;
-            fill: none;
-            stroke: currentColor;
-            stroke-width: 1.8;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        input, select, textarea { width: 100%; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 4px; margin-top: 6px; margin-bottom: 14px; font-size: 0.9rem; }
         label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
-        th, td { border: 1px solid var(--border); padding: 10px; text-align: {% if locale.dir == 'rtl' %}right{% else %}left{% endif %}; }
+        th, td { border: 1px solid var(--border); padding: 10px; }
         th { background: var(--surface-alt); }
     </style>
 </head>
 <body>
-    <nav>
-        <a href="/" class="brand">{{ t('portal_title') }}</a>
-        <div class="links" style="display: flex; align-items: center;">
+    <header>
+        <a href="/" class="brand-container">
+            <div class="brand-logo">K</div>
+            <span class="brand-text">KAALK</span>
+        </a>
+        <nav class="nav-links">
+            <a href="/">Home</a>
+            <a href="/store">Store Showcase</a>
+            <a href="/download">Download Plugin</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/blog">Blog</a>
+            <a href="/about">About Us</a>
+            <a href="/contact">Contact</a>
+        </nav>
+        <div style="display: flex; align-items: center; gap: 12px;">
             {% if user %}
                 {% if user.is_admin %}
-                    <a href="/admin">{{ t('nav_dashboard') }}</a>
-                    <a href="/admin/assets">{{ t('nav_assets') }}</a>
-                    <a href="/admin/plans">{{ t('nav_plans') }}</a>
-                    <a href="/admin/users">{{ t('nav_users') }}</a>
-                    <a href="/admin/reviews">{{ t('nav_reviews') }}</a>
+                    <a href="/admin" class="btn btn-outline" style="font-size: 0.8rem;">Admin Portal</a>
                 {% else %}
-                    <a href="/dashboard">{{ t('nav_dashboard') }}</a>
-                    <a href="/pricing">{{ t('nav_pricing') }}</a>
+                    <a href="/dashboard" class="btn btn-outline" style="font-size: 0.8rem;">Dashboard</a>
                 {% endif %}
-                <a href="/logout">{{ t('nav_logout') }}</a>
+                <a href="/logout" style="color: var(--muted); font-size: 0.85rem; text-decoration: none;">Sign Out</a>
             {% else %}
-                <a href="/pricing">{{ t('nav_pricing') }}</a>
-                <a href="/login">{{ t('nav_login') }}</a>
-                <a href="/register">{{ t('nav_register') }}</a>
+                <a href="/login" class="btn btn-outline" style="font-size: 0.8rem;">Sign In</a>
+                <a href="/register" class="btn" style="font-size: 0.8rem;">Sign Up</a>
             {% endif %}
 
             <select class="lang-select" onchange="location.href='/set-language/' + this.value;">
@@ -133,9 +243,43 @@
                 {% endfor %}
             </select>
         </div>
-    </nav>
+    </header>
+
     <div class="container">
         {% block content %}{% endblock %}
     </div>
+
+    <footer>
+        <div class="footer-grid">
+            <div>
+                <h4 style="color: var(--accent);">KAALK Asset Manager</h4>
+                <p style="line-height: 1.6; margin-top: 8px;">
+                    Enterprise asset discovery, packaging automation, and dynamic tool runtime built natively for Autodesk AutoCAD 2018+.
+                </p>
+            </div>
+            <div class="footer-col">
+                <h4>Platform</h4>
+                <a href="/store">Asset Catalog</a>
+                <a href="/download">Download Client</a>
+                <a href="/pricing">Pro Subscriptions</a>
+            </div>
+            <div class="footer-col">
+                <h4>Resources</h4>
+                <a href="/blog">Engineering Blog</a>
+                <a href="/about">About Studio</a>
+                <a href="/contact">Support & Help</a>
+            </div>
+            <div class="footer-col">
+                <h4>Legal & Standards</h4>
+                <a href="#">Privacy Protocol</a>
+                <a href="#">Security DPAPI</a>
+                <a href="#">Terms of License</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2026 KAALK Platform Service. All Rights Reserved.</span>
+            <span>Designed for AutoCAD 2018+ Workstations</span>
+        </div>
+    </footer>
 </body>
 </html>

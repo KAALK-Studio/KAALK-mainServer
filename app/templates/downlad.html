@@ -5,29 +5,31 @@
 <div style="max-width: 800px; margin: auto; padding: 20px 0;">
     <div style="text-align: center; margin-bottom: 30px;">
         <span class="badge" style="background: rgba(18, 157, 83, 0.2); color: var(--success); border: 1px solid var(--success); margin-bottom: 12px;">
-            Official Verified Client v{{ version }}
+            {{ page.badge_text or 'Official Verified Client' }} v{{ page.version or '0.5.2' }}
         </span>
-        <h2>Download KAALK for Autodesk AutoCAD</h2>
-        <p style="color: var(--muted); margin-top: 8px;">Direct client installer package compiled natively for Windows 64-bit systems.</p>
+        <h2>{{ page.headline or 'Download KAALK for Autodesk AutoCAD' }}</h2>
+        <p style="color: var(--muted); margin-top: 8px;">{{ page.subheadline or 'Direct client installer package compiled natively for Windows 64-bit systems.' }}</p>
     </div>
 
     <div class="card" style="border-color: var(--accent); text-align: center; padding: 40px 20px;">
         <div style="font-size: 3rem; margin-bottom: 10px;">⚡</div>
-        <h3 style="font-size: 1.4rem;">KaalkAssetManager.zip</h3>
-        <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 24px;">Includes compiled `KaalkAssetManager.dll`, architecture manifests, and runner scripts.</p>
-        <a href="/download/file" class="btn" style="padding: 14px 36px; font-size: 1.05rem;">
+        <h3 style="font-size: 1.4rem;">{{ page.package_name or 'KaalkAssetManager.zip' }}</h3>
+        <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 24px;">{{ page.package_description or 'Includes compiled KaalkAssetManager.dll, architecture manifests, and runner scripts.' }}</p>
+        <a href="/download/file" class="btn btn-success" style="padding: 14px 36px; font-size: 1.05rem;">
             Download Client Archive (.ZIP)
         </a>
-        <p style="font-size: 0.75rem; color: var(--muted); margin-top: 14px;">SHA-256 integrity checksum auto-verified | 100% Free of adware and third-party trackers</p>
+        <p style="font-size: 0.75rem; color: var(--muted); margin-top: 14px;">
+            SHA-256 Checksum: <code style="color: var(--accent);">{{ page.sha256 or 'Calculated automatically on release' }}</code>
+        </p>
     </div>
 
     <div class="card">
         <h3>Step-by-Step Installation in AutoCAD</h3>
         <ol style="margin: 16px 0 0 20px; line-height: 1.8; color: var(--muted); font-size: 0.9rem;">
-            <li><strong style="color: #fff;">Download & Extract:</strong> Download the ZIP archive above and extract `KaalkAssetManager.dll` to a permanent folder on your workstation (e.g. `C:\CAD_Tools\KAALK\`).</li>
-            <li><strong style="color: #fff;">Launch AutoCAD:</strong> Open your project in Autodesk AutoCAD (versions 2018 through 2026+ supported).</li>
-            <li><strong style="color: #fff;">Netload Assembly:</strong> In the AutoCAD command line, type <code style="background: var(--surface-alt); color: var(--accent); padding: 2px 6px; border-radius: 3px;">NETLOAD</code> and pick `KaalkAssetManager.dll`.</li>
-            <li><strong style="color: #fff;">Launch Palette:</strong> Type <code style="background: var(--surface-alt); color: var(--accent); padding: 2px 6px; border-radius: 3px;">KAALK</code> to open your in-app marketplace palette and sign in.</li>
+            <li><strong style="color: #fff;">Download & Extract:</strong> {{ page.step1_desc or 'Extract KaalkAssetManager.dll to a permanent directory on your workstation.' }}</li>
+            <li><strong style="color: #fff;">Launch AutoCAD:</strong> {{ page.step2_desc or 'Open your drawing in Autodesk AutoCAD 2018 or newer.' }}</li>
+            <li><strong style="color: #fff;">Netload Assembly:</strong> {{ page.step3_desc or 'Type NETLOAD in the AutoCAD command line and select KaalkAssetManager.dll.' }}</li>
+            <li><strong style="color: #fff;">Launch Palette:</strong> {{ page.step4_desc or 'Type KAALK to open your in-app marketplace palette.' }}</li>
         </ol>
     </div>
 
@@ -35,7 +37,7 @@
         <h3>System Requirements</h3>
         <table style="margin-top: 10px;">
             <tr><td><strong>Operating System</strong></td><td>Windows 10 / 11 (64-bit)</td></tr>
-            <tr><td><strong>AutoCAD Version</strong></td><td>Autodesk AutoCAD 2018 or newer (Architecture, Civil 3D, and MEP included)</td></tr>
+            <tr><td><strong>AutoCAD Version</strong></td><td>Autodesk AutoCAD 2018 or newer</td></tr>
             <tr><td><strong>.NET Framework</strong></td><td>.NET Framework 4.6.2 or higher</td></tr>
             <tr><td><strong>Network</strong></td><td>HTTPS direct connection (TLS 1.2+)</td></tr>
         </table>

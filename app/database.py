@@ -163,6 +163,16 @@ def init_db():
     );
     """)
 
+    # 9. Dynamic Site Pages CMS table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS site_pages (
+        page_key TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        content_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """)
+
     # Seed Admin User if missing
     cursor.execute("SELECT id FROM users WHERE email = 'admin@kaalk.ir'")
     if not cursor.fetchone():
@@ -172,7 +182,7 @@ def init_db():
         VALUES ('admin@kaalk.ir', '+989120000000', ?, 'Admin', 'KAALK', 1, 0, 'premium', '5.200.200.1', ?)
         """, (hash_password("Admin@12345"), now))
 
-    # Seed Subscription Plans
+    # Seed Subscription Plans if missing
     cursor.execute("SELECT COUNT(*) as count FROM subscription_plans")
     if cursor.fetchone()["count"] == 0:
         free_feats = json.dumps([
@@ -218,28 +228,78 @@ def init_db():
         ('enterprise', 'Enterprise Organization', 15000000, 365, 'Yearly', 0, 'Custom Fleet', NULL, 'Dedicated multi-seat deployment for engineering firms.', ?, 0)
         """, (free_feats, monthly_price, monthly_feats, annual_price, annual_feats, promo_feats, enterprise_feats))
 
-    # Seed Blog Articles if empty
-    cursor.execute("SELECT COUNT(*) as count FROM articles")
-    if cursor.fetchone()["count"] == 0:
-        now = datetime.datetime.utcnow().isoformat()
-        cursor.execute("""
-        INSERT INTO articles (slug, title, summary, content, category, tags, author_name, is_published, view_count, created_at, updated_at)
-        VALUES
-        ('mastering-infinite-xlines-autocad',
-         'Mastering Precision Viewport XLines in AutoCAD',
-         'Discover how non-intrusive construction lines accelerate complex geometric alignments in architectural layouts.',
-         '### Overview\n\nPrecision drafting relies on clean reference lines. Traditional methods clutter drawing layers with residual construction lines.\n\nWith the **KAALK XLine Suite**, construction lines adapt directly to the user coordinate system (UCS).\n\n```text\nCommand: XLV (Vertical XLine)\nCommand: XLH (Horizontal XLine)\nCommand: XLS (Bisecting XLine)\n```\n\n- Pure dynamic injection ensures zero registry bloat.\n- Automatically aligns with current viewport transformations.\n- Safe execution without document locks.\n\nTry it now inside AutoCAD using the in-app palette.',
-         'Tutorials',
-         'autocad, drafting, xlines, productivity',
-         'KAALK Studio', 1, 142, ?, ?),
-        ('kaalk-modular-cad-architecture',
-         'Building Cloud-Native Asset Workflows for Engineering Teams',
-         'How decoupled command dispatching and cloud packages eliminate outdated LISP and ARX deployment headaches.',
-         '### The Legacy CAD Deployment Problem\n\nFor decades, engineering firms maintained shared network drives with hundreds of unversioned `.lsp` and `.arx` scripts. Whenever AutoCAD was updated, legacy routines failed without actionable traces.\n\n### The KAALK Solution\n\n1. **Two-Tier Dynamic Catalogs**: Fast catalog indexing in milliseconds.\n2. **Pure Command Proxies**: Hot-pluggable commands registered without static command collision.\n3. **DPAPI Encrypted Client Sessions**: Seamless cloud entitlement verification.\n\nExperience the next generation of drafting tools directly inside AutoCAD 2018+.',
-         'Architecture',
-         'engineering, bim, cloud, autocad',
-         'KAALK Architecture Team', 1, 98, ?, ?)
-        """, (now, now, now, now))
+    # Seed Dynamic Site Pages CMS Defaults
+    now = datetime.datetime.utcnow().isoformat()
+    default_pages = [
+        ("home", "Home Page", {
+            "hero_badge": "AutoCAD 2018 - 2026+ Certified Runtime",
+            "hero_title": "Supercharge Your Drafting directly inside AutoCAD",
+            "hero_subtitle": "Discover, hot-load, and run precision architectural tools, construction line suites, dynamic blocks, and verified LISP routines without leaving your drawing viewport.",
+            "cta_download_text": "Download AutoCAD Plugin (v0.5.2)",
+            "cta_store_text": "Explore Asset Showcase",
+            "pillar1_title": "Hot-Plug Command Proxy",
+            "pillar1_desc": "Switch between tool versions on the fly. Commands load into memory dynamically without ever requiring an AutoCAD restart.",
+            "pillar2_title": "Zero Registry Bloat",
+            "pillar2_desc": "Tools follow the clean KAALK execution proxy. Uninstalled tools leave zero stale command residues inside your CAD workspace.",
+            "pillar3_title": "Encrypted Cloud Sync",
+            "pillar3_desc": "Windows DPAPI encrypted credentials guarantee instant offline validation and seamless pro tool unlock across your firm."
+        }),
+        ("download", "Download Page", {
+            "badge_text": "Official Verified Client",
+            "version": "0.5.2",
+            "headline": "Download KAALK for Autodesk AutoCAD",
+            "subheadline": "Direct client installer package compiled natively for Windows 64-bit systems.",
+            "package_name": "KaalkAssetManager.zip",
+            "package_description": "Includes compiled KaalkAssetManager.dll, architecture manifests, and runner scripts.",
+            "sha256": "8f3b2a5c1d4e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a",
+            "step1_title": "Download & Extract",
+            "step1_desc": "Download the ZIP archive and extract KaalkAssetManager.dll to a permanent directory on your workstation (e.g. C:\\CAD_Tools\\KAALK\\).",
+            "step2_title": "Launch AutoCAD",
+            "step2_desc": "Open your drawing project in Autodesk AutoCAD 2018 or newer (Architecture, Civil 3D, and MEP supported).",
+            "step3_title": "Netload Assembly",
+            "step3_desc": "Type NETLOAD in the AutoCAD command line and select KaalkAssetManager.dll.",
+            "step4_title": "Launch Palette",
+            "step4_desc": "Type KAALK to open your in-app marketplace palette and begin discovering CAD tools."
+        }),
+        ("store", "Store Showcase", {
+            "headline": "CAD Asset & Tool Showcase",
+            "subheadline": "Browse the catalog of verified tools, dynamic blocks, patterns, and LISP routines.",
+            "banner_title": "Direct In-CAD Execution Only",
+            "banner_text": "To maintain cryptographic integrity and dynamic hot-plugging, assets are discovered and installed exclusively inside AutoCAD via the KAALK palette."
+        }),
+        ("pricing", "Pricing & Plans", {
+            "headline": "Professional Subscription Plans",
+            "subheadline": "Flexible access to specialized AutoCAD plugins, scripts, and updates directly inside your palette.",
+            "guarantee_text": "Instant activation upon payment completion. Cancel or upgrade anytime."
+        }),
+        ("about", "About Us", {
+            "headline": "Architectural Engineering Meets Cloud Runtimes.",
+            "subheadline": "KAALK Asset Manager was founded by architects and CAD engineers who spent decades battling broken network shares, unversioned LISP scripts, and system crashes caused by static command collisions.",
+            "mission_title": "Our Core Engineering Mission",
+            "mission_desc": "Our mission is to establish a verified, cloud-synced runtime for AutoCAD. We believe CAD operators should discover, test, and run professional utilities without leaving their viewport, without wrestling with complex installation paths, and with guaranteed rollback safety.",
+            "pillar1_title": "Strict 5-Layer Architectural Integrity",
+            "pillar1_desc": "Our AutoCAD client assembly strictly isolates Security (DPAPI), Core API, Presenters, WPF UI, and Host wrappers. It runs zero external NuGet dependencies for maximum stability in enterprise environments.",
+            "pillar2_title": "Pure Command Proxy & Hot-Plug",
+            "pillar2_desc": "By moving away from static hard-coded AutoCAD attributes, tools hot-swap instantly across versions without AutoCAD reboots and cleanly detach upon uninstallation."
+        }),
+        ("contact", "Contact & Support", {
+            "headline": "Get in Touch with KAALK Engineering",
+            "subheadline": "Have an inquiry regarding multi-seat enterprise deployment, private tool publishing, or client support?",
+            "email": "support@kaalk.ir",
+            "phone": "+98 (21) 8800-0000",
+            "response_time": "Under 24 Business Hours",
+            "address": "KAALK Innovation Studio, Tehran, Iran"
+        })
+    ]
+
+    for key, title, content in default_pages:
+        cursor.execute("SELECT page_key FROM site_pages WHERE page_key = ?", (key,))
+        if not cursor.fetchone():
+            cursor.execute("""
+            INSERT INTO site_pages (page_key, title, content_json, updated_at)
+            VALUES (?, ?, ?, ?)
+            """, (key, title, json.dumps(content), now))
 
     conn.commit()
     conn.close()
+    

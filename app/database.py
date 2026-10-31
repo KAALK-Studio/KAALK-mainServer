@@ -64,7 +64,7 @@ def init_db():
     );
     """)
 
-    # 3. Asset Versions table with version-bound commands_json
+    # 3. Asset Versions table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS asset_versions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,12 +120,46 @@ def init_db():
         user_id INTEGER NOT NULL,
         plan_id TEXT NOT NULL,
         amount_toman INTEGER NOT NULL,
+        gateway TEXT DEFAULT 'zarinpal',
+        authority TEXT,
         status TEXT NOT NULL,
         transaction_ref TEXT,
         created_at TEXT NOT NULL,
         completed_at TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (plan_id) REFERENCES subscription_plans(id)
+    );
+    """)
+
+    # 7. Blog Articles table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS articles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        slug TEXT UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        summary TEXT,
+        content TEXT NOT NULL,
+        banner_url TEXT,
+        category TEXT DEFAULT 'Architecture',
+        tags TEXT,
+        author_name TEXT DEFAULT 'KAALK Studio',
+        is_published INTEGER DEFAULT 1,
+        view_count INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """)
+
+    # 8. Contact Inquiries table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS contact_inquiries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        message TEXT NOT NULL,
+        is_resolved INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL
     );
     """)
 
@@ -183,6 +217,29 @@ def init_db():
         ('promo', 'Special Promo', 245000, 30, 'One-time', 30, '30% Discount', NULL, 'Limited-time special occasion promotional access.', ?, 1),
         ('enterprise', 'Enterprise Organization', 15000000, 365, 'Yearly', 0, 'Custom Fleet', NULL, 'Dedicated multi-seat deployment for engineering firms.', ?, 0)
         """, (free_feats, monthly_price, monthly_feats, annual_price, annual_feats, promo_feats, enterprise_feats))
+
+    # Seed Blog Articles if empty
+    cursor.execute("SELECT COUNT(*) as count FROM articles")
+    if cursor.fetchone()["count"] == 0:
+        now = datetime.datetime.utcnow().isoformat()
+        cursor.execute("""
+        INSERT INTO articles (slug, title, summary, content, category, tags, author_name, is_published, view_count, created_at, updated_at)
+        VALUES
+        ('mastering-infinite-xlines-autocad',
+         'Mastering Precision Viewport XLines in AutoCAD',
+         'Discover how non-intrusive construction lines accelerate complex geometric alignments in architectural layouts.',
+         '### Overview\n\nPrecision drafting relies on clean reference lines. Traditional methods clutter drawing layers with residual construction lines.\n\nWith the **KAALK XLine Suite**, construction lines adapt directly to the user coordinate system (UCS).\n\n```text\nCommand: XLV (Vertical XLine)\nCommand: XLH (Horizontal XLine)\nCommand: XLS (Bisecting XLine)\n```\n\n- Pure dynamic injection ensures zero registry bloat.\n- Automatically aligns with current viewport transformations.\n- Safe execution without document locks.\n\nTry it now inside AutoCAD using the in-app palette.',
+         'Tutorials',
+         'autocad, drafting, xlines, productivity',
+         'KAALK Studio', 1, 142, ?, ?),
+        ('kaalk-modular-cad-architecture',
+         'Building Cloud-Native Asset Workflows for Engineering Teams',
+         'How decoupled command dispatching and cloud packages eliminate outdated LISP and ARX deployment headaches.',
+         '### The Legacy CAD Deployment Problem\n\nFor decades, engineering firms maintained shared network drives with hundreds of unversioned `.lsp` and `.arx` scripts. Whenever AutoCAD was updated, legacy routines failed without actionable traces.\n\n### The KAALK Solution\n\n1. **Two-Tier Dynamic Catalogs**: Fast catalog indexing in milliseconds.\n2. **Pure Command Proxies**: Hot-pluggable commands registered without static command collision.\n3. **DPAPI Encrypted Client Sessions**: Seamless cloud entitlement verification.\n\nExperience the next generation of drafting tools directly inside AutoCAD 2018+.',
+         'Architecture',
+         'engineering, bim, cloud, autocad',
+         'KAALK Architecture Team', 1, 98, ?, ?)
+        """, (now, now, now, now))
 
     conn.commit()
     conn.close()

@@ -1,0 +1,52 @@
+<!-- app/templates/contact.html -->
+{% extends "base.html" %}
+{% block title %}Contact & Support - KAALK{% endblock %}
+{% block content %}
+<div style="max-width: 760px; margin: auto; padding: 20px 0;">
+    <h2>Get in Touch with KAALK Engineering</h2>
+    <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px; margin-bottom: 24px;">
+        Have an inquiry regarding multi-seat enterprise deployment, private tool publishing, or client support?
+    </p>
+
+    {% if success %}
+        <div class="alert" style="border-left: 4px solid var(--success); background: var(--surface); padding: 12px; margin-bottom: 20px;">{{ success }}</div>
+    {% endif %}
+    {% if error %}
+        <div class="alert" style="border-left: 4px solid var(--danger); background: var(--surface); padding: 12px; margin-bottom: 20px;">{{ error }}</div>
+    {% endif %}
+
+    <div class="card">
+        <form action="/contact" method="POST">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                <div>
+                    <label>Full Name</label>
+                    <input type="text" name="name" required placeholder="Architect / Engineer Name">
+                </div>
+                <div>
+                    <label>Email Address</label>
+                    <input type="email" name="email" required placeholder="name@company.com">
+                </div>
+            </div>
+
+            <label>Subject</label>
+            <input type="text" name="subject" required placeholder="Enterprise multi-seat deployment / Tool request">
+
+            <label>Your Message</label>
+            <textarea name="message" rows="5" required placeholder="Describe your technical requirements or feedback..."></textarea>
+
+            <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px; margin-top: 8px;">Send Message</button>
+        </form>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center; margin-top: 20px;">
+        <div class="card" style="margin-bottom: 0;">
+            <p style="color: var(--muted); font-size: 0.8rem;">Direct Email Support</p>
+            <h4 style="color: var(--accent); margin-top: 4px;">support@kaalk.ir</h4>
+        </div>
+        <div class="card" style="margin-bottom: 0;">
+            <p style="color: var(--muted); font-size: 0.8rem;">Direct Technical Line</p>
+            <h4 style="color: var(--accent); margin-top: 4px;">+98 (21) 8800-0000</h4>
+        </div>
+    </div>
+</div>
+{% endblock %}

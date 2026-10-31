@@ -1,0 +1,44 @@
+<!-- app/templates/admin/pages_list.html -->
+{% extends "base.html" %}
+{% block title %}Website CMS Pages - KAALK Admin{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2>Public Website Content Management (CMS)</h2>
+        <p style="color: var(--muted); font-size: 0.85rem;">Modify text, headlines, links, downloads, and policies for every public-facing page</p>
+    </div>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Page Identifier</th>
+                <th>Display Title</th>
+                <th>Public URL</th>
+                <th>Last Updated</th>
+                <th style="text-align: center;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in pages %}
+            <tr>
+                <td><strong style="color: var(--accent);">{{ p.page_key }}</strong></td>
+                <td><strong>{{ p.title }}</strong></td>
+                <td>
+                    {% if p.page_key == 'home' %}
+                        <a href="/" target="_blank" style="color: var(--muted);">/</a>
+                    {% else %}
+                        <a href="/{{ p.page_key }}" target="_blank" style="color: var(--muted);">/{{ p.page_key }}</a>
+                    {% endif %}
+                </td>
+                <td>{{ p.updated_at[:16].replace('T', ' ') }}</td>
+                <td style="text-align: center;">
+                    <a href="/admin/pages/{{ p.page_key }}" class="btn" style="font-size: 0.8rem; padding: 4px 14px;">Edit Page Content</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

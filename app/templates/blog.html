@@ -1,0 +1,41 @@
+<!-- app/templates/blog.html -->
+{% extends "base.html" %}
+{% block title %}Engineering Blog & AutoCAD Tutorials | KAALK{% endblock %}
+{% block content %}
+<div style="margin-bottom: 24px;">
+    <h2>Engineering Blog & CAD Insights</h2>
+    <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;">Technical insights, architectural workflow tutorials, and software release notes.</p>
+</div>
+
+<!-- Category Filters -->
+<div style="display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap;">
+    <a href="/blog" class="btn {% if not selected_cat %}btn-success{% else %}btn-outline{% endif %}" style="font-size: 0.8rem;">All Articles</a>
+    {% for cat in categories %}
+    <a href="/blog?category={{ cat }}" class="btn {% if selected_cat == cat %}btn-success{% else %}btn-outline{% endif %}" style="font-size: 0.8rem;">{{ cat }}</a>
+    {% endfor %}
+</div>
+
+<!-- Articles Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+    {% for art in articles %}
+    <div class="card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.75rem; color: var(--accent); font-weight: bold;">{{ art.category }}</span>
+                <span style="font-size: 0.75rem; color: var(--muted);">{{ art.created_at[:10] }}</span>
+            </div>
+            <h3 style="font-size: 1.15rem; margin-bottom: 8px; line-height: 1.4;">
+                <a href="/blog/{{ art.slug }}" style="color: #fff; text-decoration: none;">{{ art.title }}</a>
+            </h3>
+            <p style="color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin-bottom: 16px;">
+                {{ art.summary }}
+            </p>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 10px;">
+            <span style="font-size: 0.75rem; color: var(--muted);">By {{ art.author_name }}</span>
+            <a href="/blog/{{ art.slug }}" class="btn btn-outline" style="font-size: 0.75rem;">Read Article &rarr;</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

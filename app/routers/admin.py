@@ -103,6 +103,163 @@ def admin_dashboard(request: Request):
         }
     )
 
+# --- Blog Articles Management ---
+
+@router.get("/blog", response_class=HTMLResponse)
+def admin_blog_list(request: Request):
+    user = require_admin(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM articles ORDER BY id DESC")
+    articles = cursor.fetchall()
+    conn.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/blog.html",
+        context={"request": request, "user": user, "articles": articles}
+    )
+
+@router.get("/blog/new", response_class=HTMLResponse)
+def admin_blog_create_page(request: Request):
+    user = require_admin(request)
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/blog_edit.html",
+        context={"request": request, "user": user, "article": None, "error": None}
+    )
+
+@router.post("/blog/new", response_class=HTMLResponse)
+def admin_blog_create_action(request: Request,
+                             title: str = Form(...),
+                             slug: str = Form(...),
+                             category: str = Form("Architecture"),
+                             summary: str = Form(""),
+                             content: str = Form(...),
+                             tags: str = Form(""),
+                             author_name: str = Form("KAALK Studio"),
+                             is_published: bool = Form(False)):
+    user = require_admin(request)
+    clean_slug = slug.strip().lower()
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM articles WHERE slug = ?", (clean_slug,))
+    if cursor.fetchone():
+        conn.close()
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/blog_edit.html",
+            context={"request": request, "user": user, "article": None, "error": "Slug already exists."}
+        )
+
+    now = datetime.datetime.utcnow().isoformat()
+    cursor.execute("""
+    INSERT INTO articles (slug, title, summary, content, category, tags, author_name, is_published, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (clean_slug, title.strip(), summary.strip(), content.strip(), category.strip(),
+          tags.strip(), author_name.strip(), 1 if is_published else 0, now, now))
+    conn.commit()
+    conn.close()
+
+    return RedirectResponse("/admin/blog", status_code=302)
+
+@router.get("/blog/{article_id}/edit", response_class=HTMLResponse)
+def admin_blog_edit_page(request: Request, article_id: int):
+    user = require_admin(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM articles WHERE id = ?", (article_id,))
+    article = cursor.fetchone()
+    conn.close()
+
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found.")
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/blog_edit.html",
+        context={"request": request, "user": user, "article": article, "error": None}
+    )
+
+@router.post("/blog/{article_id}/edit", response_class=HTMLResponse)
+def admin_blog_edit_action(request: Request,
+                           article_id: int,
+                           title: str = Form(...),
+                           slug: str = Form(...),
+                           category: str = Form("Architecture"),
+                           summary: str = Form(""),
+                           content: str = Form(...),
+                           tags: str = Form(""),
+                           author_name: str = Form("KAALK Studio"),
+                           is_published: bool = Form(False)):
+    user = require_admin(request)
+    clean_slug = slug.strip().lower()
+
+    conn = get_db()
+    cursor = conn.cursor()
+    now = datetime.datetime.utcnow().isoformat()
+    cursor.execute("""
+    UPDATE articles SET
+        slug = ?, title = ?, summary = ?, content = ?, category = ?,
+        tags = ?, author_name = ?, is_published = ?, updated_at = ?
+    WHERE id = ?
+    """, (clean_slug, title.strip(), summary.strip(), content.strip(), category.strip(),
+          tags.strip(), author_name.strip(), 1 if is_published else 0, now, article_id))
+    conn.commit()
+    conn.close()
+
+    return RedirectResponse("/admin/blog", status_code=302)
+
+@router.post("/blog/{article_id}/delete")
+def admin_blog_delete(request: Request, article_id: int):
+    require_admin(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM articles WHERE id = ?", (article_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/admin/blog", status_code=302)
+
+# --- Inquiries Management ---
+
+@router.get("/inquiries", response_class=HTMLResponse)
+def admin_inquiries_list(request: Request):
+    user = require_admin(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM contact_inquiries ORDER BY id DESC")
+    inquiries = cursor.fetchall()
+    conn.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/inquiries.html",
+        context={"request": request, "user": user, "inquiries": inquiries}
+    )
+
+@router.post("/inquiries/{inquiry_id}/toggle")
+def admin_inquiry_toggle(request: Request, inquiry_id: int):
+    require_admin(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE contact_inquiries SET is_resolved = CASE WHEN is_resolved = 1 THEN 0 ELSE 1 END WHERE id = ?", (inquiry_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/admin/inquiries", status_code=302)
+
+@router.post("/inquiries/{inquiry_id}/delete")
+def admin_inquiry_delete(request: Request, inquiry_id: int):
+    require_admin(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM contact_inquiries WHERE id = ?", (inquiry_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse("/admin/inquiries", status_code=302)
+
+# --- Users & Assets ---
+
 @router.get("/users", response_class=HTMLResponse)
 def users_list(request: Request):
     user = require_admin(request)
@@ -121,133 +278,6 @@ def users_list(request: Request):
         name="admin/users.html",
         context={"request": request, "user": user, "users": all_users}
     )
-
-@router.get("/users/create", response_class=HTMLResponse)
-def create_user_page(request: Request):
-    user = require_admin(request)
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/user_create.html",
-        context={"request": request, "user": user, "error": None}
-    )
-
-@router.post("/users/create", response_class=HTMLResponse)
-def create_user_action(request: Request,
-                       first_name: str = Form(...),
-                       last_name: str = Form(...),
-                       email: str = Form(...),
-                       phone: str = Form(...),
-                       password: str = Form(...),
-                       subscription_tier: str = Form("free"),
-                       subscription_days: int = Form(0),
-                       is_admin: bool = Form(False),
-                       is_suspended: bool = Form(False)):
-    user = require_admin(request)
-    email_clean = email.strip().lower()
-
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM users WHERE email = ?", (email_clean,))
-    if cursor.fetchone():
-        conn.close()
-        return templates.TemplateResponse(
-            request=request,
-            name="admin/user_create.html",
-            context={"request": request, "user": user, "error": "An account with this email already exists."}
-        )
-
-    now = datetime.datetime.utcnow().isoformat()
-    new_expiry = None
-    if subscription_tier == "premium" and subscription_days > 0:
-        new_expiry = (datetime.datetime.utcnow() + datetime.timedelta(days=subscription_days)).isoformat()
-
-    hashed = hash_password(password)
-    client_ip = request.client.host if request.client else "127.0.0.1"
-
-    cursor.execute("""
-    INSERT INTO users (email, phone, password_hash, first_name, last_name, is_admin, is_suspended,
-                       subscription_tier, subscription_expires_at, last_ip, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (email_clean, phone.strip(), hashed, first_name.strip(), last_name.strip(),
-          1 if is_admin else 0, 1 if is_suspended else 0, subscription_tier, new_expiry, client_ip, now))
-
-    conn.commit()
-    conn.close()
-
-    return RedirectResponse("/admin/users", status_code=302)
-
-@router.get("/users/{user_id}/edit", response_class=HTMLResponse)
-def edit_user_page(request: Request, user_id: int):
-    user = require_admin(request)
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-    target_user = cursor.fetchone()
-    conn.close()
-
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/user_edit.html",
-        context={"request": request, "user": user, "target_user": target_user, "success": None}
-    )
-
-@router.post("/users/{user_id}/edit", response_class=HTMLResponse)
-def update_user_action(request: Request,
-                       user_id: int,
-                       first_name: str = Form(...),
-                       last_name: str = Form(...),
-                       email: str = Form(...),
-                       phone: str = Form(...),
-                       subscription_tier: str = Form(...),
-                       subscription_days: int = Form(0),
-                       is_admin: bool = Form(False),
-                       is_suspended: bool = Form(False)):
-    user = require_admin(request)
-    conn = get_db()
-    cursor = conn.cursor()
-
-    new_expiry = None
-    if subscription_tier == "premium" and subscription_days > 0:
-        new_expiry = (datetime.datetime.utcnow() + datetime.timedelta(days=subscription_days)).isoformat()
-
-    cursor.execute("""
-    UPDATE users SET
-        first_name = ?, last_name = ?, email = ?, phone = ?,
-        subscription_tier = ?, subscription_expires_at = COALESCE(?, subscription_expires_at),
-        is_admin = ?, is_suspended = ?
-    WHERE id = ?
-    """, (first_name.strip(), last_name.strip(), email.strip().lower(), phone.strip(),
-          subscription_tier, new_expiry, 1 if is_admin else 0, 1 if is_suspended else 0, user_id))
-
-    conn.commit()
-    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-    updated_user = cursor.fetchone()
-    conn.close()
-
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/user_edit.html",
-        context={"request": request, "user": user, "target_user": updated_user, "success": "User profile updated successfully."}
-    )
-
-@router.post("/users/{user_id}/delete")
-def delete_user_action(request: Request, user_id: int):
-    user = require_admin(request)
-    if user["id"] == user_id:
-        raise HTTPException(status_code=400, detail="Cannot delete your active admin account.")
-
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM payments WHERE user_id = ?", (user_id,))
-    cursor.execute("DELETE FROM comments WHERE user_id = ?", (user_id,))
-    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-    conn.close()
-
-    return RedirectResponse("/admin/users", status_code=302)
 
 @router.get("/assets", response_class=HTMLResponse)
 def assets_list(request: Request):
@@ -269,269 +299,6 @@ def assets_list(request: Request):
         name="admin/assets.html",
         context={"request": request, "user": user, "assets": all_assets}
     )
-
-@router.get("/assets/{asset_id}/edit", response_class=HTMLResponse)
-def edit_asset_page(request: Request, asset_id: str):
-    user = require_admin(request)
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
-    target_asset = cursor.fetchone()
-    conn.close()
-
-    if not target_asset:
-        raise HTTPException(status_code=404, detail="Asset not found.")
-
-    asset_dict = dict(target_asset)
-    try:
-        raw_media = json.loads(asset_dict.get("media_json") or "[]")
-    except Exception:
-        raw_media = []
-
-    try:
-        raw_commands = json.loads(asset_dict.get("commands_json") or "[]")
-    except Exception:
-        raw_commands = []
-
-    media_items = []
-    for m in raw_media:
-        m_copy = dict(m)
-        url = m_copy.get("media_url") or ""
-        m_copy["display_filename"] = url.split('/')[-1] if url else "Media File"
-        media_items.append(m_copy)
-
-    asset_dict["media_items"] = media_items
-    asset_dict["commands_list"] = raw_commands
-
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/asset_edit.html",
-        context={"request": request, "user": user, "asset": asset_dict, "success": None}
-    )
-
-@router.post("/assets/{asset_id}/edit", response_class=HTMLResponse)
-async def update_asset_action(request: Request,
-                              asset_id: str,
-                              name: str = Form(...),
-                              type: str = Form(...),
-                              asset_status: str = Form("stable"),
-                              min_autocad: int = Form(2018),
-                              short_desc: str = Form(""),
-                              full_desc: str = Form(""),
-                              commands_json_payload: str = Form("[]"),
-                              tags: str = Form(""),
-                              is_pro: bool = Form(False),
-                              media_json_payload: str = Form("[]"),
-                              icon_file: Optional[UploadFile] = File(None),
-                              new_media_files: List[UploadFile] = File([]),
-                              new_media_titles: List[str] = Form([]),
-                              new_media_descriptions: List[str] = Form([])):
-    user = require_admin(request)
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
-    existing = cursor.fetchone()
-
-    if not existing:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Asset not found.")
-
-    slug = existing["slug"]
-    thumb_32 = existing["thumb_32_url"]
-    thumb_64 = existing["thumb_64_url"]
-
-    if icon_file and icon_file.filename:
-        thumb_32, thumb_64 = PackageService.process_icon(slug, icon_file)
-
-    try:
-        updated_media = json.loads(media_json_payload)
-    except Exception:
-        updated_media = []
-
-    try:
-        updated_commands = json.loads(commands_json_payload)
-    except Exception:
-        updated_commands = []
-
-    if new_media_files and len(new_media_files) > 0 and new_media_files[0].filename:
-        added_media = PackageService.save_media_items(slug, new_media_files, new_media_titles, new_media_descriptions)
-        updated_media.extend(added_media)
-
-    now = datetime.datetime.utcnow().isoformat()
-    cursor.execute("""
-    UPDATE assets SET
-        name = ?, type = ?, asset_status = ?, min_autocad = ?,
-        short_desc = ?, full_desc = ?, commands_json = ?,
-        tags = ?, is_pro = ?, thumb_32_url = ?, thumb_64_url = ?,
-        media_json = ?, updated_at = ?
-    WHERE id = ?
-    """, (name.strip(), type.strip(), asset_status.strip(), min_autocad,
-          short_desc.strip(), full_desc.strip(), json.dumps(updated_commands),
-          tags.strip(), 1 if is_pro else 0, thumb_32, thumb_64,
-          json.dumps(updated_media), now, asset_id))
-
-    conn.commit()
-    cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
-    updated_asset = dict(cursor.fetchone())
-    conn.close()
-
-    media_items = []
-    for m in updated_media:
-        m_copy = dict(m)
-        url = m_copy.get("media_url") or ""
-        m_copy["display_filename"] = url.split('/')[-1] if url else "Media File"
-        media_items.append(m_copy)
-
-    updated_asset["media_items"] = media_items
-    updated_asset["commands_list"] = updated_commands
-
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/asset_edit.html",
-        context={"request": request, "user": user, "asset": updated_asset, "success": "Asset updated successfully."}
-    )
-
-# --- Version Management & Deployment ---
-
-@router.get("/assets/{asset_id}/versions", response_class=HTMLResponse)
-def asset_versions_page(request: Request, asset_id: str, success: Optional[str] = Query(None)):
-    user = require_admin(request)
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
-    asset = cursor.fetchone()
-    if not asset:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Asset not found.")
-
-    cursor.execute("SELECT * FROM asset_versions WHERE asset_id = ? ORDER BY id DESC", (asset_id,))
-    versions = cursor.fetchall()
-    conn.close()
-
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/versions.html",
-        context={"request": request, "user": user, "asset": asset, "versions": versions, "success": success}
-    )
-
-@router.get("/assets/{asset_id}/versions/new", response_class=HTMLResponse)
-def deploy_version_page(request: Request, asset_id: str):
-    user = require_admin(request)
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
-    asset = cursor.fetchone()
-
-    if not asset:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Asset not found.")
-
-    cursor.execute("SELECT commands_json FROM asset_versions WHERE asset_id = ? ORDER BY id DESC LIMIT 1", (asset_id,))
-    latest_ver = cursor.fetchone()
-    conn.close()
-
-    raw_commands = []
-    if latest_ver and latest_ver["commands_json"]:
-        try:
-            raw_commands = json.loads(latest_ver["commands_json"])
-        except Exception:
-            raw_commands = []
-    elif asset["commands_json"]:
-        try:
-            raw_commands = json.loads(asset["commands_json"])
-        except Exception:
-            raw_commands = []
-
-    asset_dict = dict(asset)
-    asset_dict["commands_list"] = raw_commands
-
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/version_deploy.html",
-        context={"request": request, "user": user, "asset": asset_dict, "error": None}
-    )
-
-@router.post("/assets/{asset_id}/versions/new", response_class=HTMLResponse)
-async def deploy_version_action(request: Request,
-                                asset_id: str,
-                                version: str = Form(...),
-                                release_notes: str = Form(""),
-                                entry_point: str = Form(...),
-                                commands_json_payload: str = Form("[]"),
-                                source_files: List[UploadFile] = File(...)):
-    user = require_admin(request)
-    version = version.strip()
-    entry_point = entry_point.strip()
-
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
-    asset = cursor.fetchone()
-    if not asset:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Asset not found.")
-
-    cursor.execute("SELECT id FROM asset_versions WHERE asset_id = ? AND version = ?", (asset_id, version))
-    if cursor.fetchone():
-        conn.close()
-        return templates.TemplateResponse(
-            request=request,
-            name="admin/version_deploy.html",
-            context={
-                "request": request,
-                "user": user,
-                "asset": dict(asset),
-                "error": f"Version '{version}' is already deployed for this asset."
-            }
-        )
-
-    slug = asset["slug"]
-    try:
-        commands_list = json.loads(commands_json_payload)
-    except Exception:
-        commands_list = []
-
-    pkg_info = PackageService.build_package_bundle(
-        slug, version, source_files, entry_point, commands_list
-    )
-
-    now = datetime.datetime.utcnow().isoformat()
-    cursor.execute("""
-    INSERT INTO asset_versions (asset_id, version, release_notes, download_url, file_size, sha256, commands_json, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (asset_id, version, release_notes.strip(), pkg_info["download_url"], pkg_info["file_size"], pkg_info["sha256"], json.dumps(commands_list), now))
-
-    cursor.execute("""
-    UPDATE assets SET latest_version = ?, commands_json = ?, updated_at = ? WHERE id = ?
-    """, (version, json.dumps(commands_list), now, asset_id))
-
-    conn.commit()
-    conn.close()
-
-    return RedirectResponse(f"/admin/assets/{asset_id}/versions?success=Version+{version}+deployed+successfully", status_code=302)
-
-@router.post("/assets/{asset_id}/versions/{version}/delete")
-def delete_asset_version(request: Request, asset_id: str, version: str):
-    require_admin(request)
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
-    asset = cursor.fetchone()
-
-    cursor.execute("DELETE FROM asset_versions WHERE asset_id = ? AND version = ?", (asset_id, version))
-    cursor.execute("SELECT version, commands_json FROM asset_versions WHERE asset_id = ? ORDER BY id DESC", (asset_id,))
-    remaining_rows = cursor.fetchall()
-    remaining = [r["version"] for r in remaining_rows]
-
-    new_latest = remaining[0] if remaining else ""
-    new_commands = remaining_rows[0]["commands_json"] if remaining_rows else "[]"
-
-    cursor.execute("UPDATE assets SET latest_version = ?, commands_json = ? WHERE id = ?", (new_latest, new_commands, asset_id))
-    conn.commit()
-    conn.close()
-
-    PackageService.delete_version_archive(asset["slug"], version, remaining)
-    return RedirectResponse(f"/admin/assets/{asset_id}/versions?success=Version+{version}+removed", status_code=302)
 
 @router.post("/assets/{asset_id}/delete")
 def delete_asset_action(request: Request, asset_id: str):
@@ -579,8 +346,6 @@ async def publish_action(request: Request,
                          asset_id: Optional[str] = Form(None)):
     user = require_admin(request)
     slug = slug.strip().lower()
-
-    # Automatically derive deterministic xxHash32 Asset ID if not explicitly provided
     computed_asset_id = asset_id.strip() if (asset_id and asset_id.strip()) else PackageService.generate_asset_id(slug)
 
     thumb_32_url, thumb_64_url = "", ""
@@ -665,91 +430,3 @@ def plans_page(request: Request):
         name="admin/plans.html",
         context={"request": request, "user": user, "plans": formatted, "success": None}
     )
-
-@router.post("/plans/{plan_id}", response_class=HTMLResponse)
-def update_plan_action(request: Request,
-                       plan_id: str,
-                       name: str = Form(...),
-                       price_toman: int = Form(...),
-                       duration_days: int = Form(...),
-                       billing_cycle: str = Form(...),
-                       discount_percent: int = Form(0),
-                       discount_badge: str = Form(""),
-                       discount_expires_at: Optional[str] = Form(None),
-                       description: str = Form(""),
-                       features: str = Form(...),
-                       is_active: bool = Form(False)):
-    user = require_admin(request)
-    features_list = [f.strip() for f in features.splitlines() if f.strip()]
-
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-    UPDATE subscription_plans
-    SET name = ?, price_toman = ?, duration_days = ?, billing_cycle = ?,
-        discount_percent = ?, discount_badge = ?, discount_expires_at = ?,
-        description = ?, features_json = ?, is_active = ?
-    WHERE id = ?
-    """, (name.strip(), price_toman, duration_days, billing_cycle.strip(),
-          discount_percent, discount_badge.strip(), discount_expires_at.strip() if discount_expires_at else None,
-          description.strip(), json.dumps(features_list), 1 if is_active else 0, plan_id))
-    conn.commit()
-
-    cursor.execute("SELECT * FROM subscription_plans ORDER BY price_toman ASC")
-    plans = cursor.fetchall()
-    conn.close()
-
-    formatted = []
-    for p in plans:
-        item = dict(p)
-        item["features_text"] = "\n".join(json.loads(p["features_json"]) if p["features_json"] else [])
-        formatted.append(item)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/plans.html",
-        context={"request": request, "user": user, "plans": formatted, "success": f"Plan '{name}' successfully updated."}
-    )
-
-# --- Reviews ---
-
-@router.get("/reviews", response_class=HTMLResponse)
-def reviews_page(request: Request):
-    user = require_admin(request)
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-    SELECT c.id, c.asset_id, c.author, c.text, c.rating, c.created_at, COALESCE(a.name, c.asset_id) as asset_name
-    FROM comments c
-    LEFT JOIN assets a ON c.asset_id = a.id
-    ORDER BY c.id DESC
-    """)
-    rows = cursor.fetchall()
-    conn.close()
-
-    formatted_comments = []
-    for r in rows:
-        item = dict(r)
-        item["created_at_short"] = str(item.get("created_at") or "")[:10]
-        r_val = item.get("rating")
-        try:
-            item["rating_int"] = int(r_val) if (r_val is not None and int(r_val) > 0) else None
-        except (ValueError, TypeError):
-            item["rating_int"] = None
-        formatted_comments.append(item)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="admin/reviews.html",
-        context={"request": request, "user": user, "comments": formatted_comments}
-    )
-
-@router.post("/reviews/{comment_id}/delete")
-def delete_review(request: Request, comment_id: int):
-    require_admin(request)
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM comments WHERE id = ?", (comment_id,))
-    conn.commit()
-    conn.close()
-    return RedirectResponse("/admin/reviews", status_code=302)

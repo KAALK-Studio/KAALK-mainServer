@@ -5,6 +5,7 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Request, Form, UploadFile, File, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
+from app.config import DOWNLOADS_DIR
 from app.database import get_db
 from app.security import hash_password, get_current_user_from_cookie
 from app.services.package_service import PackageService
@@ -18,6 +19,8 @@ def require_admin(request: Request):
         raise HTTPException(status_code=403, detail="Admin privileges required.")
     return user
 
+# --- Full Operational Analytics Dashboard ---
+
 @router.get("", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
     user = require_admin(request)
@@ -25,9 +28,9 @@ def admin_dashboard(request: Request):
     cursor = conn.cursor()
 
     cursor.execute("SELECT COUNT(*) as c FROM users")
-    total_users = cursor.fetchone()["c"]
+    total_users = cursor.fetchone()["c"] or 0
     cursor.execute("SELECT COUNT(*) as c FROM users WHERE subscription_tier = 'premium'")
-    pro_users = cursor.fetchone()["c"]
+    pro_users = cursor.fetchone()["c"] or 0
 
     now = datetime.datetime.utcnow()
     d1 = (now - datetime.timedelta(days=1)).isoformat()
@@ -72,10 +75,11 @@ def admin_dashboard(request: Request):
     ip_rows = cursor.fetchall()
     geo_nodes = []
     for r in ip_rows:
-        ip_hash = hash(r["last_ip"])
+        ip = r["last_ip"] or "127.0.0.1"
+        ip_hash = hash(ip)
         x = 20 + abs(ip_hash % 60)
         y = 20 + abs((ip_hash // 100) % 55)
-        geo_nodes.append({"ip": r["last_ip"], "x": x, "y": y})
+        geo_nodes.append({"ip": ip, "x": x, "y": y})
 
     conn.close()
 
@@ -103,7 +107,98 @@ def admin_dashboard(request: Request):
         }
     )
 
-# --- Blog Articles Management ---
+# --- Dynamic Site Pages CMS ---
+
+@router.get("/pages", response_class=HTMLResponse)
+def admin_pages_hub(request: Request):
+    user = require_admin(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT page_key, title, updated_at FROM site_pages ORDER BY page_key ASC")
+    pages = cursor.fetchall()
+    conn.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/pages_list.html",
+        context={"request": request, "user": user, "pages": pages}
+    )
+
+@router.get("/pages/{page_key}", response_class=HTMLResponse)
+def admin_page_edit_view(request: Request, page_key: str, success: Optional[str] = Query(None)):
+    user = require_admin(request)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM site_pages WHERE page_key = ?", (page_key.strip().lower(),))
+    page = cursor.fetchone()
+    conn.close()
+
+    if not page:
+        raise HTTPException(status_code=404, detail="Page not found in CMS.")
+
+    content = json.loads(page["content_json"]) if page["content_json"] else {}
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/page_edit.html",
+        context={
+            "request": request,
+            "user": user,
+            "page_key": page["page_key"],
+            "page_title": page["title"],
+            "content": content,
+            "success": success
+        }
+    )
+
+@router.post("/pages/{page_key}")
+async def admin_page_edit_save(request: Request,
+                               page_key: str,
+                               client_file: Optional[UploadFile] = File(None)):
+    user = require_admin(request)
+    form_data = await request.form()
+    clean_key = page_key.strip().lower()
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM site_pages WHERE page_key = ?", (clean_key,))
+    existing = cursor.fetchone()
+
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Page not found in CMS.")
+
+    current_content = json.loads(existing["content_json"]) if existing["content_json"] else {}
+
+    # Extract all text fields submitted from the form
+    for k, v in form_data.items():
+        if k not in ("client_file",):
+            current_content[k] = str(v).strip()
+
+    # Specialized upload handling for Download page (.zip binary)
+    if clean_key == "download" and client_file and client_file.filename:
+        os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+        dest_path = os.path.join(DOWNLOADS_DIR, "KaalkAssetManager.zip")
+        with open(dest_path, "wb") as f:
+            content_bytes = await client_file.read()
+            f.write(content_bytes)
+
+        # Compute file SHA256 integrity hash automatically
+        import hashlib
+        sha = hashlib.sha256(content_bytes).hexdigest()
+        current_content["sha256"] = sha
+        current_content["package_name"] = "KaalkAssetManager.zip"
+
+    now = datetime.datetime.utcnow().isoformat()
+    cursor.execute("""
+    UPDATE site_pages SET content_json = ?, updated_at = ? WHERE page_key = ?
+    """, (json.dumps(current_content), now, clean_key))
+    conn.commit()
+    conn.close()
+
+    return RedirectResponse(f"/admin/pages/{clean_key}?success=Page+content+updated+successfully", status_code=302)
+
+# --- Blog Management ---
 
 @router.get("/blog", response_class=HTMLResponse)
 def admin_blog_list(request: Request):

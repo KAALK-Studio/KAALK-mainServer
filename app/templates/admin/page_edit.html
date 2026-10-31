@@ -1,0 +1,179 @@
+<!-- app/templates/admin/page_edit.html -->
+{% extends "base.html" %}
+{% block title %}Edit {{ page_title }} - KAALK Admin CMS{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 860px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+            <h2>Edit Page: {{ page_title }} ({{ page_key }})</h2>
+            <p style="color: var(--muted); font-size: 0.85rem;">Modify page texts, banners, and links visible to website visitors</p>
+        </div>
+        <a href="/admin/pages" class="btn" style="background: var(--surface-alt);">Back to CMS Hub</a>
+    </div>
+
+    {% if success %}
+        <div class="alert" style="border-left: 4px solid var(--success); background: var(--surface-alt); padding: 10px; margin-bottom: 16px; font-weight: bold;">
+            {{ success }}
+        </div>
+    {% endif %}
+
+    <form action="/admin/pages/{{ page_key }}" method="POST" enctype="multipart/form-data">
+        
+        <!-- HOME PAGE CMS -->
+        {% if page_key == 'home' %}
+            <label>Hero Badge Text</label>
+            <input type="text" name="hero_badge" value="{{ content.hero_badge or '' }}">
+
+            <label>Hero Main Title</label>
+            <input type="text" name="hero_title" value="{{ content.hero_title or '' }}" required>
+
+            <label>Hero Subtitle / Description</label>
+            <textarea name="hero_subtitle" rows="3">{{ content.hero_subtitle or '' }}</textarea>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <label>Download Button Text</label>
+                    <input type="text" name="cta_download_text" value="{{ content.cta_download_text or '' }}">
+                </div>
+                <div>
+                    <label>Store Button Text</label>
+                    <input type="text" name="cta_store_text" value="{{ content.cta_store_text or '' }}">
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+            <h3>Feature Pillars</h3>
+
+            <label>Pillar 1 Title & Description</label>
+            <input type="text" name="pillar1_title" value="{{ content.pillar1_title or '' }}">
+            <textarea name="pillar1_desc" rows="2">{{ content.pillar1_desc or '' }}</textarea>
+
+            <label>Pillar 2 Title & Description</label>
+            <input type="text" name="pillar2_title" value="{{ content.pillar2_title or '' }}">
+            <textarea name="pillar2_desc" rows="2">{{ content.pillar2_desc or '' }}</textarea>
+
+            <label>Pillar 3 Title & Description</label>
+            <input type="text" name="pillar3_title" value="{{ content.pillar3_title or '' }}">
+            <textarea name="pillar3_desc" rows="2">{{ content.pillar3_desc or '' }}</textarea>
+        
+        <!-- DOWNLOAD PAGE CMS -->
+        {% elif page_key == 'download' %}
+            <label>Client Release Version (e.g. 0.5.2)</label>
+            <input type="text" name="version" value="{{ content.version or '0.5.2' }}" required>
+
+            <label>Header Title</label>
+            <input type="text" name="headline" value="{{ content.headline or '' }}" required>
+
+            <label>Header Subtitle</label>
+            <textarea name="subheadline" rows="2">{{ content.subheadline or '' }}</textarea>
+
+            <div style="background: var(--surface-alt); padding: 14px; border-radius: 6px; margin: 15px 0;">
+                <label>Upload New Client Installer ZIP (KaalkAssetManager.zip)</label>
+                <input type="file" name="client_file" accept=".zip">
+                <small style="color: var(--muted); display: block; margin-top: 4px;">
+                    Uploading a new file will place it in storage/downloads/KaalkAssetManager.zip and auto-calculate SHA-256 hash.
+                </small>
+            </div>
+
+            <label>SHA-256 Checksum</label>
+            <input type="text" name="sha256" value="{{ content.sha256 or '' }}">
+
+            <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+            <h3>Step-by-Step Installation Instructions</h3>
+
+            <label>Step 1 (Download)</label>
+            <textarea name="step1_desc" rows="2">{{ content.step1_desc or '' }}</textarea>
+
+            <label>Step 2 (AutoCAD Launch)</label>
+            <textarea name="step2_desc" rows="2">{{ content.step2_desc or '' }}</textarea>
+
+            <label>Step 3 (NETLOAD Command)</label>
+            <textarea name="step3_desc" rows="2">{{ content.step3_desc or '' }}</textarea>
+
+            <label>Step 4 (KAALK Command)</label>
+            <textarea name="step4_desc" rows="2">{{ content.step4_desc or '' }}</textarea>
+
+        <!-- STORE SHOWCASE CMS -->
+        {% elif page_key == 'store' %}
+            <label>Showcase Headline</label>
+            <input type="text" name="headline" value="{{ content.headline or '' }}" required>
+
+            <label>Showcase Subtitle</label>
+            <textarea name="subheadline" rows="2">{{ content.subheadline or '' }}</textarea>
+
+            <label>In-CAD Notice Banner Title</label>
+            <input type="text" name="banner_title" value="{{ content.banner_title or '' }}">
+
+            <label>In-CAD Notice Banner Description</label>
+            <textarea name="banner_text" rows="2">{{ content.banner_text or '' }}</textarea>
+
+        <!-- PRICING PAGE CMS -->
+        {% elif page_key == 'pricing' %}
+            <label>Page Headline</label>
+            <input type="text" name="headline" value="{{ content.headline or '' }}" required>
+
+            <label>Page Subtitle</label>
+            <textarea name="subheadline" rows="2">{{ content.subheadline or '' }}</textarea>
+
+            <label>Guarantee & Refund Policy Notice</label>
+            <textarea name="guarantee_text" rows="2">{{ content.guarantee_text or '' }}</textarea>
+
+        <!-- ABOUT US CMS -->
+        {% elif page_key == 'about' %}
+            <label>Headline</label>
+            <input type="text" name="headline" value="{{ content.headline or '' }}" required>
+
+            <label>Subheadline / Intro</label>
+            <textarea name="subheadline" rows="3">{{ content.subheadline or '' }}</textarea>
+
+            <label>Core Mission Title</label>
+            <input type="text" name="mission_title" value="{{ content.mission_title or '' }}">
+
+            <label>Core Mission Body</label>
+            <textarea name="mission_desc" rows="4">{{ content.mission_desc or '' }}</textarea>
+
+            <label>Pillar 1 Title & Description</label>
+            <input type="text" name="pillar1_title" value="{{ content.pillar1_title or '' }}">
+            <textarea name="pillar1_desc" rows="3">{{ content.pillar1_desc or '' }}</textarea>
+
+            <label>Pillar 2 Title & Description</label>
+            <input type="text" name="pillar2_title" value="{{ content.pillar2_title or '' }}">
+            <textarea name="pillar2_desc" rows="3">{{ content.pillar2_desc or '' }}</textarea>
+
+        <!-- CONTACT US CMS -->
+        {% elif page_key == 'contact' %}
+            <label>Headline</label>
+            <input type="text" name="headline" value="{{ content.headline or '' }}" required>
+
+            <label>Subheadline</label>
+            <textarea name="subheadline" rows="2">{{ content.subheadline or '' }}</textarea>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <label>Support Email Address</label>
+                    <input type="email" name="email" value="{{ content.email or '' }}">
+                </div>
+                <div>
+                    <label>Direct Phone Number</label>
+                    <input type="text" name="phone" value="{{ content.phone or '' }}">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <label>Response Time / SLA</label>
+                    <input type="text" name="response_time" value="{{ content.response_time or '' }}">
+                </div>
+                <div>
+                    <label>Office / Studio Location</label>
+                    <input type="text" name="address" value="{{ content.address or '' }}">
+                </div>
+            </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px; margin-top: 20px;">
+            Save Page Content
+        </button>
+    </form>
+</div>
+{% endblock %}

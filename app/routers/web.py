@@ -2,10 +2,10 @@
 import os
 import datetime
 import json
-from typing import Optional
+from typing import Optional, Dict, Any
 from fastapi import APIRouter, Request, Form, Response, status, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
-from app.config import DOWNLOADS_DIR, PACKAGES_DIR
+from app.config import DOWNLOADS_DIR
 from app.database import get_db
 from app.security import hash_password, verify_password, create_jwt_token, get_current_user_from_cookie
 from app.services.payment_service import PaymentGatewayService
@@ -13,37 +13,36 @@ from app.templates_config import templates
 
 router = APIRouter(tags=["Web Portal"])
 
-# --- Home & Marketing ---
+def get_page_content(page_key: str) -> Dict[str, Any]:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT content_json FROM site_pages WHERE page_key = ?", (page_key.strip().lower(),))
+    row = cursor.fetchone()
+    conn.close()
+    if row and row["content_json"]:
+        try:
+            return json.loads(row["content_json"])
+        except Exception:
+            return {}
+    return {}
+
+# --- Home Landing Page ---
 
 @router.get("/", response_class=HTMLResponse)
 def home_page(request: Request):
     user = get_current_user_from_cookie(request)
+    page_data = get_page_content("home")
+
     conn = get_db()
     cursor = conn.cursor()
-
     cursor.execute("""
     SELECT id, slug, name, type, short_desc, thumb_64_url, thumb_32_url, is_pro, rating, download_count 
     FROM assets ORDER BY download_count DESC LIMIT 6
     """)
     featured_assets = cursor.fetchall()
 
-    cursor.execute("SELECT * FROM subscription_plans WHERE is_active = 1 ORDER BY price_toman ASC LIMIT 3")
-    plans = cursor.fetchall()
-    formatted_plans = []
-    for p in plans:
-        item = dict(p)
-        item["features"] = json.loads(p["features_json"]) if p["features_json"] else []
-        formatted_plans.append(item)
-
     cursor.execute("SELECT slug, title, summary, category, created_at FROM articles WHERE is_published = 1 ORDER BY id DESC LIMIT 3")
     articles = cursor.fetchall()
-
-    cursor.execute("SELECT COUNT(*) as c FROM assets")
-    asset_count = cursor.fetchone()["c"] or 0
-
-    cursor.execute("SELECT COUNT(*) as c FROM users")
-    user_count = cursor.fetchone()["c"] or 0
-
     conn.close()
 
     return templates.TemplateResponse(
@@ -52,10 +51,9 @@ def home_page(request: Request):
         context={
             "request": request,
             "user": user,
+            "page": page_data,
             "featured_assets": featured_assets,
-            "plans": formatted_plans,
-            "articles": articles,
-            "stats": {"assets": asset_count, "users": user_count}
+            "articles": articles
         }
     )
 
@@ -64,27 +62,53 @@ def home_page(request: Request):
 @router.get("/download", response_class=HTMLResponse)
 def download_page(request: Request):
     user = get_current_user_from_cookie(request)
+    page_data = get_page_content("download")
+
+    # Verify if package binary exists
+    zip_path = os.path.join(DOWNLOADS_DIR, "KaalkAssetManager.zip")
+    has_binary = os.path.exists(zip_path)
+
     return templates.TemplateResponse(
         request=request,
         name="download.html",
-        context={"request": request, "user": user, "version": "0.5.2"}
+        context={
+            "request": request,
+            "user": user,
+            "page": page_data,
+            "has_binary": has_binary
+        }
     )
 
 @router.get("/download/file")
 def download_plugin_file():
-    target_zip = os.path.join(DOWNLOADS_DIR, "KaalkAssetManager.zip")
-    if not os.path.exists(target_zip):
-        # Create lightweight bundle placeholder if missing
-        import zipfile
-        with zipfile.ZipFile(target_zip, "w") as zf:
-            zf.writestr("README.txt", "KAALK Asset Manager Plugin Client for AutoCAD 2018+\nRun NETLOAD in AutoCAD and select KaalkAssetManager.dll.\nType KAALK to open.")
-    return FileResponse(target_zip, filename="KaalkAssetManager.zip", media_type="application/zip")
+    os.makedirs(DOWNLOADS_DIR, exist_ok=True)
+    zip_path = os.path.join(DOWNLOADS_DIR, "KaalkAssetManager.zip")
 
-# --- Showcase Store (No Browser Downloads) ---
+    if not os.path.exists(zip_path):
+        import zipfile
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(
+                "README.txt",
+                "KAALK Asset Manager Client for AutoCAD 2018+\n"
+                "1. Place KaalkAssetManager.dll in a designated folder.\n"
+                "2. In AutoCAD, run NETLOAD and select KaalkAssetManager.dll.\n"
+                "3. Type KAALK to display version and launch the palette."
+            )
+
+    return FileResponse(
+        path=zip_path,
+        filename="KaalkAssetManager.zip",
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=KaalkAssetManager.zip"}
+    )
+
+# --- Store Showcase (Browser Downloads Disabled) ---
 
 @router.get("/store", response_class=HTMLResponse)
 def store_showcase(request: Request, type: Optional[str] = Query(None), search: Optional[str] = Query(None)):
     user = get_current_user_from_cookie(request)
+    page_data = get_page_content("store")
+
     conn = get_db()
     cursor = conn.cursor()
 
@@ -114,6 +138,7 @@ def store_showcase(request: Request, type: Optional[str] = Query(None), search: 
         context={
             "request": request,
             "user": user,
+            "page": page_data,
             "assets": assets,
             "selected_type": type or "",
             "search_query": search or ""
@@ -165,7 +190,91 @@ def store_asset_detail(request: Request, slug: str):
         }
     )
 
-# --- Blog & Articles ---
+# --- Pricing Page ---
+
+@router.get("/pricing", response_class=HTMLResponse)
+def pricing_page(request: Request):
+    user = get_current_user_from_cookie(request)
+    page_data = get_page_content("pricing")
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM subscription_plans WHERE is_active = 1 ORDER BY price_toman ASC")
+    plan_rows = cursor.fetchall()
+    conn.close()
+
+    plans = []
+    for p in plan_rows:
+        item = dict(p)
+        item["features"] = json.loads(p["features_json"]) if p["features_json"] else []
+        plans.append(item)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="pricing.html",
+        context={"request": request, "user": user, "page": page_data, "plans": plans}
+    )
+
+# --- About & Contact Pages ---
+
+@router.get("/about", response_class=HTMLResponse)
+def about_page(request: Request):
+    user = get_current_user_from_cookie(request)
+    page_data = get_page_content("about")
+    return templates.TemplateResponse(
+        request=request,
+        name="about.html",
+        context={"request": request, "user": user, "page": page_data}
+    )
+
+@router.get("/contact", response_class=HTMLResponse)
+def contact_page(request: Request):
+    user = get_current_user_from_cookie(request)
+    page_data = get_page_content("contact")
+    return templates.TemplateResponse(
+        request=request,
+        name="contact.html",
+        context={"request": request, "user": user, "page": page_data, "success": None, "error": None}
+    )
+
+@router.post("/contact", response_class=HTMLResponse)
+def contact_submit(request: Request,
+                   name: str = Form(...),
+                   email: str = Form(...),
+                   subject: str = Form(...),
+                   message: str = Form(...)):
+    user = get_current_user_from_cookie(request)
+    page_data = get_page_content("contact")
+
+    name_clean = name.strip()
+    email_clean = email.strip().lower()
+    subject_clean = subject.strip()
+    message_clean = message.strip()
+
+    if not name_clean or not email_clean or not message_clean:
+        return templates.TemplateResponse(
+            request=request,
+            name="contact.html",
+            context={"request": request, "user": user, "page": page_data, "error": "Please fill in all required fields.", "success": None}
+        )
+
+    conn = get_db()
+    cursor = conn.cursor()
+    now = datetime.datetime.utcnow().isoformat()
+    cursor.execute("""
+    INSERT INTO contact_inquiries (name, email, subject, message, is_resolved, created_at)
+    VALUES (?, ?, ?, ?, 0, ?)
+    """, (name_clean, email_clean, subject_clean, message_clean, now))
+    conn.commit()
+    conn.close()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="contact.html",
+        context={"request": request, "user": user, "page": page_data, "success": "Thank you! Your inquiry has been routed to engineering support.", "error": None}
+    )
+
+# --- Blog ---
 
 @router.get("/blog", response_class=HTMLResponse)
 def blog_list(request: Request, category: Optional[str] = Query(None)):
@@ -222,61 +331,6 @@ def blog_article(request: Request, slug: str):
         request=request,
         name="blog_detail.html",
         context={"request": request, "user": user, "article": article, "recent": recent}
-    )
-
-# --- About & Contact ---
-
-@router.get("/about", response_class=HTMLResponse)
-def about_page(request: Request):
-    user = get_current_user_from_cookie(request)
-    return templates.TemplateResponse(
-        request=request,
-        name="about.html",
-        context={"request": request, "user": user}
-    )
-
-@router.get("/contact", response_class=HTMLResponse)
-def contact_page(request: Request):
-    user = get_current_user_from_cookie(request)
-    return templates.TemplateResponse(
-        request=request,
-        name="contact.html",
-        context={"request": request, "user": user, "success": None, "error": None}
-    )
-
-@router.post("/contact", response_class=HTMLResponse)
-def contact_submit(request: Request,
-                   name: str = Form(...),
-                   email: str = Form(...),
-                   subject: str = Form(...),
-                   message: str = Form(...)):
-    user = get_current_user_from_cookie(request)
-    name_clean = name.strip()
-    email_clean = email.strip().lower()
-    subject_clean = subject.strip()
-    message_clean = message.strip()
-
-    if not name_clean or not email_clean or not message_clean:
-        return templates.TemplateResponse(
-            request=request,
-            name="contact.html",
-            context={"request": request, "user": user, "error": "Please fill in all required fields.", "success": None}
-        )
-
-    conn = get_db()
-    cursor = conn.cursor()
-    now = datetime.datetime.utcnow().isoformat()
-    cursor.execute("""
-    INSERT INTO contact_inquiries (name, email, subject, message, is_resolved, created_at)
-    VALUES (?, ?, ?, ?, 0, ?)
-    """, (name_clean, email_clean, subject_clean, message_clean, now))
-    conn.commit()
-    conn.close()
-
-    return templates.TemplateResponse(
-        request=request,
-        name="contact.html",
-        context={"request": request, "user": user, "success": "Thank you! Your message has been received.", "error": None}
     )
 
 # --- Authentication ---
@@ -369,7 +423,7 @@ def logout():
     redirect.delete_cookie("access_token")
     return redirect
 
-# --- User Dashboard & Billing ---
+# --- Dashboard & Payments ---
 
 @router.get("/dashboard", response_class=HTMLResponse)
 def dashboard_page(request: Request):
@@ -405,29 +459,6 @@ def dashboard_page(request: Request):
         name="dashboard.html",
         context={"request": request, "user": user, "remaining_days": remaining_days, "payments": payments}
     )
-
-@router.get("/pricing", response_class=HTMLResponse)
-def pricing_page(request: Request):
-    user = get_current_user_from_cookie(request)
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM subscription_plans WHERE is_active = 1 ORDER BY price_toman ASC")
-    plan_rows = cursor.fetchall()
-    conn.close()
-
-    plans = []
-    for p in plan_rows:
-        item = dict(p)
-        item["features"] = json.loads(p["features_json"]) if p["features_json"] else []
-        plans.append(item)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="pricing.html",
-        context={"request": request, "user": user, "plans": plans}
-    )
-
-# --- Checkout & ZarinPal Gateway Flow ---
 
 @router.get("/checkout", response_class=HTMLResponse)
 def checkout_page(request: Request, plan_id: str = Query("monthly")):

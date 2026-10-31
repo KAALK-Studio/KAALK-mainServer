@@ -3,9 +3,9 @@
 {% block title %}Contact & Support - KAALK{% endblock %}
 {% block content %}
 <div style="max-width: 760px; margin: auto; padding: 20px 0;">
-    <h2>Get in Touch with KAALK Engineering</h2>
+    <h2>{{ page.headline or 'Get in Touch with KAALK Engineering' }}</h2>
     <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px; margin-bottom: 24px;">
-        Have an inquiry regarding multi-seat enterprise deployment, private tool publishing, or client support?
+        {{ page.subheadline or 'Have an inquiry regarding multi-seat enterprise deployment, private tool publishing, or client support?' }}
     </p>
 
     {% if success %}
@@ -41,11 +41,11 @@
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center; margin-top: 20px;">
         <div class="card" style="margin-bottom: 0;">
             <p style="color: var(--muted); font-size: 0.8rem;">Direct Email Support</p>
-            <h4 style="color: var(--accent); margin-top: 4px;">support@kaalk.ir</h4>
+            <h4 style="color: var(--accent); margin-top: 4px;">{{ page.email or 'support@kaalk.ir' }}</h4>
         </div>
         <div class="card" style="margin-bottom: 0;">
             <p style="color: var(--muted); font-size: 0.8rem;">Direct Technical Line</p>
-            <h4 style="color: var(--accent); margin-top: 4px;">+98 (21) 8800-0000</h4>
+            <h4 style="color: var(--accent); margin-top: 4px;">{{ page.phone or '+98 (21) 8800-0000' }}</h4>
         </div>
     </div>
 </div>

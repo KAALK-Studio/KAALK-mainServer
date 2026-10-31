@@ -1,0 +1,97 @@
+<!-- app/templates/asset_detail.html -->
+{% extends "base.html" %}
+{% block title %}{{ asset.name }} - AutoCAD Asset Showcase{% endblock %}
+{% block content %}
+<div style="margin-bottom: 15px;">
+    <a href="/store" style="color: var(--muted); text-decoration: none; font-size: 0.85rem;">&larr; Back to Asset Catalog</a>
+</div>
+
+<div class="card" style="display: flex; gap: 24px; align-items: center;">
+    {% if asset.thumb_64_url %}
+        <img src="{{ asset.thumb_64_url }}" width="80" height="80" style="border-radius: 8px; object-fit: cover;">
+    {% else %}
+        <div style="width: 80px; height: 80px; background: var(--surface-alt); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; color: var(--accent);">K</div>
+    {% endif %}
+    <div style="flex: 1;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <h2>{{ asset.name }}</h2>
+            <span class="badge {% if asset.is_pro %}badge-pro{% else %}badge-free{% endif %}">{{ 'PRO ONLY' if asset.is_pro else 'FREE' }}</span>
+            <span class="badge badge-stable">{{ (asset.asset_status or 'stable')|upper }}</span>
+        </div>
+        <p style="color: var(--muted); margin-top: 4px; font-size: 0.9rem;">
+            Developer: <strong>{{ asset.dev_name or 'KAALK Studio' }}</strong> | Min AutoCAD: <strong>{{ asset.min_autocad }}</strong> | Active Release: <strong>v{{ asset.latest_version }}</strong>
+        </p>
+    </div>
+    <div style="text-align: right;">
+        <span style="display: block; font-size: 1.4rem; color: var(--gold); font-weight: bold;">★ {{ "%.1f"|format(asset.rating) }}</span>
+        <span style="color: var(--muted); font-size: 0.8rem;">{{ asset.rating_count }} ratings ({{ asset.download_count }} installs)</span>
+    </div>
+</div>
+
+<!-- In-CAD Installation Callout Banner -->
+<div class="card" style="background: rgba(0, 122, 204, 0.12); border-color: var(--accent); display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h4 style="color: var(--accent); margin-bottom: 4px;">Install Directly in AutoCAD</h4>
+        <p style="font-size: 0.85rem; color: var(--text);">
+            Open your AutoCAD workstation, toggle your <code style="background: var(--surface); padding: 2px 6px; border-radius: 3px;">KAALK</code> palette, find <strong>{{ asset.name }}</strong> and click Install.
+        </p>
+    </div>
+    <a href="/download" class="btn" style="font-size: 0.8rem; white-space: nowrap;">Download AutoCAD Plugin</a>
+</div>
+
+<!-- Screenshots & Video Media -->
+{% if asset.media_items %}
+<div class="card">
+    <h3>Media & Visual Guides</h3>
+    <div style="display: flex; gap: 14px; overflow-x: auto; padding-top: 12px;">
+        {% for m in asset.media_items %}
+        <div style="background: var(--surface-alt); border-radius: 6px; padding: 6px; min-width: 220px; max-width: 280px;">
+            {% if m.kind == 'video' %}
+                <video src="{{ m.media_url }}" controls style="width: 100%; border-radius: 4px; height: 140px; object-fit: cover;"></video>
+            {% else %}
+                <img src="{{ m.media_url }}" style="width: 100%; border-radius: 4px; height: 140px; object-fit: cover;">
+            {% endif %}
+            <h5 style="margin-top: 6px; font-size: 0.85rem;">{{ m.title }}</h5>
+            <p style="color: var(--muted); font-size: 0.75rem;">{{ m.description }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Commands Table -->
+{% if asset.commands_list %}
+<div class="card">
+    <h3>Command Shortcuts & Execution Signatures</h3>
+    <p style="color: var(--muted); font-size: 0.8rem; margin-top: 2px;">Dynamically registered commands via the KAALK execution proxy.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Command</th>
+                <th>Shortcut Alias</th>
+                <th>Status</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in asset.commands_list %}
+            <tr>
+                <td><code style="color: var(--accent); font-weight: bold;">{{ c.command }}</code></td>
+                <td><code style="color: var(--muted);">{{ c.alias or '-' }}</code></td>
+                <td><span class="badge badge-stable">{{ (c.status or 'stable')|upper }}</span></td>
+                <td>{{ c.description }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Markdown Description -->
+<div class="card">
+    <h3>Documentation & Guidelines</h3>
+    <div style="margin-top: 12px; line-height: 1.7; color: var(--text); font-size: 0.95rem; white-space: pre-line;">
+        {{ asset.full_desc or asset.short_desc }}
+    </div>
+</div>
+{% endblock %}

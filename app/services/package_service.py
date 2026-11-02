@@ -160,7 +160,7 @@ class PackageService:
 
     @classmethod
     def build_package_bundle(cls, slug: str, version: str, files: List[UploadFile],
-                             entry_point: str, commands: List[dict]) -> dict:
+                             entry_point: str, commands: List[dict], asset_name: str = "") -> dict:
         asset_dir = os.path.join(PACKAGES_DIR, slug)
         os.makedirs(asset_dir, exist_ok=True)
 
@@ -170,12 +170,25 @@ class PackageService:
 
         included_files = [f.filename for f in files if f.filename]
 
+        normalized_commands = []
+        for cmd in commands:
+            if isinstance(cmd, dict) and cmd.get("command"):
+                normalized_commands.append({
+                    "command": str(cmd.get("command", "")).strip().upper(),
+                    "alias": str(cmd.get("alias", "")).strip().upper(),
+                    "title": str(cmd.get("title", "")).strip(),
+                    "status": str(cmd.get("status", "stable")).strip().lower(),
+                    "description": str(cmd.get("description", "")).strip(),
+                    "deprecation_notice": str(cmd.get("deprecation_notice", "")).strip()
+                })
+
         with zipfile.ZipFile(version_filepath, "w", zipfile.ZIP_DEFLATED) as zf:
             package_manifest = {
                 "slug": slug,
+                "name": asset_name or slug,
                 "version": version,
                 "entry_point": entry_point,
-                "commands": commands,
+                "commands": normalized_commands,
                 "files": included_files
             }
             zf.writestr("package.json", json.dumps(package_manifest, indent=2))
@@ -194,7 +207,8 @@ class PackageService:
         return {
             "download_url": f"/static/packages/{slug}/{version_filename}",
             "file_size": file_size,
-            "sha256": sha256_hash
+            "sha256": sha256_hash,
+            "commands": normalized_commands
         }
 
     @classmethod

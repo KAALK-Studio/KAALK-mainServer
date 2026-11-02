@@ -1,0 +1,289 @@
+<!-- app/templates/admin/version_deploy.html -->
+{% extends "base.html" %}
+{% block title %}Deploy New Version - {{ asset.name }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 760px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <div>
+            <h2>Deploy New Version</h2>
+            <p style="color: var(--muted); font-size: 0.85rem;">Target Asset: <strong>{{ asset.name }}</strong> ({{ asset.slug }})</p>
+        </div>
+        <a href="/admin/assets/{{ asset.id }}/versions" class="btn" style="background: var(--surface-alt);">Back to Versions</a>
+    </div>
+
+    {% if error %}
+        <div class="alert" style="border-left-color: var(--danger); font-weight: bold; margin-bottom: 15px;">{{ error }}</div>
+    {% endif %}
+
+    <form id="deployVersionForm" action="/admin/assets/{{ asset.id }}/versions/new" method="POST" enctype="multipart/form-data">
+        <label>New Version Identifier (e.g. 1.1.0)</label>
+        <input type="text" name="version" placeholder="1.1.0" required style="margin-bottom: 14px;">
+
+        <!-- Commands & Lifecycle Status Repeater -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+                <h3>Version Commands & Lifecycle Status</h3>
+                <p style="color: var(--muted); font-size: 0.8rem;">Define which commands are supported in this release, including new Beta features or Deprecations.</p>
+            </div>
+            <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
+        </div>
+
+        <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+            {% for c in asset.commands_list %}
+            <div class="command-row" style="background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+                    <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
+                    <div>
+                        <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
+                        <input type="text" class="cmd-name" value="{{ c.command }}" placeholder="XLV" required style="margin-bottom: 0;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
+                        <input type="text" class="cmd-alias" value="{{ c.alias }}" placeholder="XV" style="margin-bottom: 0;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem;">Status</label>
+                        <select class="cmd-status" style="margin-bottom: 0;">
+                            <option value="stable" {% if c.status == 'stable' %}selected{% endif %}>Stable</option>
+                            <option value="beta" {% if c.status == 'beta' %}selected{% endif %}>Beta (Experimental)</option>
+                            <option value="deprecated" {% if c.status == 'deprecated' %}selected{% endif %}>Deprecated</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem;">Title</label>
+                        <input type="text" class="cmd-title" value="{{ c.title }}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div>
+                        <label style="font-size: 0.75rem;">Description</label>
+                        <input type="text" class="cmd-desc" value="{{ c.description }}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
+                        <input type="text" class="cmd-dep-notice" value="{{ c.deprecation_notice or '' }}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <div style="margin-top: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label style="margin-bottom: 0;">Release Notes for Version (Markdown Supported)</label>
+                <div style="display: flex; gap: 6px;">
+                    <button type="button" id="relWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleRelTab('write')">Write</button>
+                    <button type="button" id="relPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleRelTab('preview')">Live Preview</button>
+                </div>
+            </div>
+            <textarea name="release_notes" id="releaseNotesInput" rows="4" placeholder="- Added experimental `XLS` command (Beta)&#10;- Deprecated legacy `OLD_GUIDE`&#10;- Fixed memory leak in viewport calculations"></textarea>
+            <div id="releaseNotesPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 10px; border-radius: 4px; min-height: 80px; font-size: 0.85rem; margin-bottom: 14px;"></div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <h3>Updated Package Source & Dependency Files</h3>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select the updated executable .dll and dependency files (.dcl, .dwg) for this release.</p>
+
+        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+            <input type="file" id="sourcePicker" multiple>
+            <div id="sourcesQueue" style="margin-top: 10px;"></div>
+        </div>
+
+        <input type="hidden" name="entry_point" id="selectedEntryPoint" required>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; height: 38px; margin-top: 15px; font-size: 0.95rem;">Build & Deploy Version Archive</button>
+    </form>
+</div>
+
+<script>
+function renderMarkdownPreview(raw) {
+    if (!raw) return '<em style="color: var(--muted);">No text entered.</em>';
+    let html = raw
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/^### (.*$)/gim, '<h4 style="margin: 8px 0 4px 0; color: var(--text);">$1</h4>')
+        .replace(/^## (.*$)/gim, '<h3 style="margin: 10px 0 6px 0; color: var(--text);">$1</h3>')
+        .replace(/^# (.*$)/gim, '<h2 style="margin: 12px 0 8px 0; color: var(--text);">$1</h2>')
+        .replace(/^\> (.*$)/gim, '<blockquote style="border-left: 3px solid var(--accent); padding-left: 8px; margin: 6px 0; color: var(--muted); font-style: italic;">$1</blockquote>')
+        .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+        .replace(/`([^`]+)`/gim, '<code style="background: var(--surface); padding: 2px 4px; border-radius: 3px; color: var(--accent); font-family: monospace;">$1</code>')
+        .replace(/^\- (.*$)/gim, '<li style="margin-left: 18px;">$1</li>')
+        .replace(/\n$/gim, '<br />');
+    return html;
+}
+
+function toggleRelTab(mode) {
+    const input = document.getElementById('releaseNotesInput');
+    const preview = document.getElementById('releaseNotesPreview');
+    const writeBtn = document.getElementById('relWriteTab');
+    const prevBtn = document.getElementById('relPreviewTab');
+
+    if (mode === 'preview') {
+        preview.innerHTML = renderMarkdownPreview(input.value);
+        input.style.display = 'none';
+        preview.style.display = 'block';
+        prevBtn.style.background = 'var(--accent)';
+        writeBtn.style.background = 'var(--surface-alt)';
+    } else {
+        input.style.display = 'block';
+        preview.style.display = 'none';
+        writeBtn.style.background = 'var(--accent)';
+        prevBtn.style.background = 'var(--surface-alt)';
+    }
+}
+
+const commandsContainer = document.getElementById('commandsContainer');
+
+function addCommandRow(command = '', alias = '', title = '', status = 'stable', description = '', deprecationNotice = '') {
+    const row = document.createElement('div');
+    row.className = 'command-row';
+    row.style = 'background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;';
+    row.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+            <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
+            <div>
+                <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
+                <input type="text" class="cmd-name" value="${command}" placeholder="XLV" required style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
+                <input type="text" class="cmd-alias" value="${alias}" placeholder="XV" style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Status</label>
+                <select class="cmd-status" style="margin-bottom: 0;">
+                    <option value="stable" ${status === 'stable' ? 'selected' : ''}>Stable</option>
+                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta (Experimental)</option>
+                    <option value="deprecated" ${status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Title</label>
+                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+                <label style="font-size: 0.75rem;">Description</label>
+                <input type="text" class="cmd-desc" value="${description}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
+                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+            </div>
+        </div>
+    `;
+    commandsContainer.appendChild(row);
+}
+
+const sourcePicker = document.getElementById('sourcePicker');
+const sourcesQueue = document.getElementById('sourcesQueue');
+const entryPointInput = document.getElementById('selectedEntryPoint');
+let fileStore = new DataTransfer();
+
+sourcePicker.addEventListener('change', () => {
+    for (let file of sourcePicker.files) {
+        fileStore.items.add(file);
+    }
+    renderSources();
+    sourcePicker.value = '';
+});
+
+function renderSources() {
+    sourcesQueue.innerHTML = '';
+    const executableExts = ['.dll'];
+    
+    Array.from(fileStore.files).forEach((file, index) => {
+        const ext = '.' + file.name.split('.').pop().toLowerCase();
+        const isExec = executableExts.includes(ext);
+
+        const row = document.createElement('div');
+        row.style = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px;';
+        
+        let radioHtml = isExec ? 
+            `<label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; margin: 0;">
+                <input type="radio" name="entry_choice" value="${file.name}" onchange="setEntryPoint('${file.name}')" ${entryPointInput.value === file.name || (index===0 && !entryPointInput.value) ? 'checked' : ''}>
+                Main Entry Point
+             </label>` : `<span style="font-size: 0.75rem; color: var(--muted);">Resource / Dependency</span>`;
+
+        if (isExec && (!entryPointInput.value || index === 0)) {
+            entryPointInput.value = file.name;
+        }
+
+        row.innerHTML = `
+            <div>
+                <strong>${file.name}</strong> 
+                <span style="color: var(--muted); font-size: 0.75rem; margin-left: 8px;">(${(file.size/1024).toFixed(1)} KB)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px;">
+                ${radioHtml}
+                <button type="button" onclick="removeSource(${index})" class="btn-icon" style="color: var(--danger);">✕</button>
+            </div>
+        `;
+        sourcesQueue.appendChild(row);
+    });
+}
+
+function setEntryPoint(name) {
+    entryPointInput.value = name;
+}
+
+function removeSource(index) {
+    const dt = new DataTransfer();
+    const files = Array.from(fileStore.files);
+    files.splice(index, 1);
+    files.forEach(f => dt.items.add(f));
+    fileStore = dt;
+    if (files.length === 0) entryPointInput.value = '';
+    renderSources();
+}
+
+document.getElementById('deployVersionForm').addEventListener('submit', (e) => {
+    if (fileStore.files.length === 0) {
+        alert('Please add at least one source file.');
+        e.preventDefault();
+        return;
+    }
+    if (!entryPointInput.value) {
+        alert('Please select an executable file (.dll) as the Main Entry Point.');
+        e.preventDefault();
+        return;
+    }
+
+    const commandRows = document.querySelectorAll('.command-row');
+    const commandsList = [];
+    commandRows.forEach(row => {
+        const cmdName = row.querySelector('.cmd-name').value.trim();
+        if (cmdName) {
+            commandsList.push({
+                command: cmdName,
+                alias: row.querySelector('.cmd-alias').value.trim(),
+                title: row.querySelector('.cmd-title').value.trim(),
+                status: row.querySelector('.cmd-status').value,
+                description: row.querySelector('.cmd-desc').value.trim(),
+                deprecation_notice: row.querySelector('.cmd-dep-notice').value.trim()
+            });
+        }
+    });
+    document.getElementById('commandsJsonPayload').value = JSON.stringify(commandsList);
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.name = 'source_files';
+    fileInput.multiple = true;
+    fileInput.files = fileStore.files;
+    fileInput.style.display = 'none';
+    e.target.appendChild(fileInput);
+});
+</script>
+{% endblock %}

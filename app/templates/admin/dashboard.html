@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Admin Analytics - KAALK{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2>KAALK Analytics & Store Operations</h2>
+        <p style="color: var(--muted); font-size: 0.85rem;">Continuous Pro Administrative Monitor</p>
+    </div>
+    <div style="display: flex; gap: 8px;">
+        <a href="/admin/publish" class="btn btn-success">+ Publish New Asset</a>
+        <a href="/admin/plans" class="btn">Configure Plans</a>
+    </div>
+</div>
+
+<!-- Primary Metrics -->
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
+    <div class="card" style="margin-bottom: 0;">
+        <p style="color: var(--muted); font-size: 0.8rem;">Current Month Revenue</p>
+        <h2 style="color: var(--success); font-size: 1.6rem; margin-top: 6px;">{{ "{:,}".format(monthly_revenue) }} <span style="font-size: 0.8rem; color: var(--text);">Tomans</span></h2>
+    </div>
+    <div class="card" style="margin-bottom: 0;">
+        <p style="color: var(--muted); font-size: 0.8rem;">Monthly Downloads</p>
+        <h2 style="font-size: 1.6rem; margin-top: 6px; color: var(--accent);">{{ monthly_downloads }}</h2>
+    </div>
+    <div class="card" style="margin-bottom: 0;">
+        <p style="color: var(--muted); font-size: 0.8rem;">Total Active Assets</p>
+        <h2 style="font-size: 1.6rem; margin-top: 6px;">{{ total_assets }}</h2>
+    </div>
+    <div class="card" style="margin-bottom: 0;">
+        <p style="color: var(--muted); font-size: 0.8rem;">Pro Membership Ratio</p>
+        <h2 style="font-size: 1.6rem; margin-top: 6px; color: var(--accent);">{{ pro_users }} <span style="font-size: 0.85rem; color: var(--muted);">/ {{ total_users }}</span></h2>
+    </div>
+</div>
+
+<!-- Growth breakdown -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
+    <div class="card">
+        <h3>User Growth Velocity</h3>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 15px;">New registered users across recent intervals</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timeframe</th>
+                    <th>Free Users</th>
+                    <th>Pro Users</th>
+                    <th>Total Growth</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Last 24 Hours</strong></td>
+                    <td>{{ growth.day_free }}</td>
+                    <td>{{ growth.day_pro }}</td>
+                    <td><span class="badge badge-pro">+{{ growth.day_total }}</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Past 7 Days</strong></td>
+                    <td>{{ growth.week_free }}</td>
+                    <td>{{ growth.week_pro }}</td>
+                    <td><span class="badge badge-pro">+{{ growth.week_total }}</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Past 30 Days</strong></td>
+                    <td>{{ growth.month_free }}</td>
+                    <td>{{ growth.month_pro }}</td>
+                    <td><span class="badge badge-pro">+{{ growth.month_total }}</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Product Performance</h3>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 12px;">Top vs Low-Engagement Assets</p>
+        
+        <div style="background: var(--surface-alt); padding: 10px; border-radius: 4px; margin-bottom: 12px;">
+            <p style="font-size: 0.75rem; color: var(--muted);">Most Popular Asset</p>
+            <h4 style="color: var(--accent); margin-top: 4px;">{{ top_asset.name if top_asset else 'N/A' }}</h4>
+            <span style="font-size: 0.8rem;">{{ top_asset.download_count if top_asset else 0 }} Downloads</span>
+        </div>
+
+        <div style="background: var(--surface-alt); padding: 10px; border-radius: 4px;">
+            <p style="font-size: 0.75rem; color: var(--danger);">Needs Attention / Low Feedback</p>
+            <h4 style="margin-top: 4px;">{{ low_asset.name if low_asset else 'None' }}</h4>
+            <span style="font-size: 0.8rem; color: var(--muted);">Rating: {{ "%.1f"|format(low_asset.rating) if low_asset else '-' }} ⭐ ({{ low_asset.rating_count if low_asset else 0 }} votes)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Geographical user map -->
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3>User Geographical Distribution (IP Intelligence)</h3>
+        <span style="color: var(--muted); font-size: 0.8rem;">Cluster visualization by connection point</span>
+    </div>
+    <div id="geo-map" style="height: 280px; width: 100%; border-radius: 4px; background: #18181a; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border);">
+        <svg viewBox="0 0 800 400" style="width: 100%; height: 100%; opacity: 0.35;">
+            <!-- Stylized world outline -->
+            <path fill="#555" d="M150,120 Q180,80 240,110 T320,160 T250,230 T170,200 Z" />
+            <path fill="#555" d="M420,90 Q480,70 540,100 T580,180 T500,220 T430,170 Z" />
+            <path fill="#555" d="M460,240 Q520,230 540,290 T490,360 T440,310 Z" />
+            <path fill="#555" d="M600,120 Q660,100 700,140 T720,230 T640,250 T600,170 Z" />
+        </svg>
+        
+        <!-- Live plotted markers based on user IP origins -->
+        {% for node in geo_nodes %}
+        <div title="{{ node.city or 'User Origin' }}: {{ node.ip }}" style="position: absolute; left: {{ node.x }}%; top: {{ node.y }}%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center;">
+            <div style="width: 12px; height: 12px; background: rgba(0, 122, 204, 0.4); border-radius: 50%; animation: pulse 2s infinite;"></div>
+            <div style="width: 6px; height: 6px; background: var(--accent); border-radius: 50%; position: absolute;"></div>
+        </div>
+        {% endfor %}
+        <div style="position: absolute; bottom: 8px; right: 12px; font-size: 0.75rem; color: var(--muted); background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 3px;">
+            Active Connected Nodes: {{ geo_nodes|length }}
+        </div>
+    </div>
+</div>
+{% endblock %}

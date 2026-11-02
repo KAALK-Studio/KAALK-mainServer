@@ -1,0 +1,26 @@
+{
+  "code": "en",
+  "name": "English",
+  "dir": "ltr",
+  "font_family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  "font_url": "",
+  "translations": {
+    "portal_title": "KAALK Portal",
+    "nav_pricing": "Pricing",
+    "nav_dashboard": "Dashboard",
+    "nav_assets": "Assets",
+    "nav_plans": "Plans",
+    "nav_users": "Users",
+    "nav_reviews": "Reviews",
+    "nav_login": "Sign In",
+    "nav_register": "Sign Up",
+    "nav_logout": "Logout",
+    "btn_submit": "Submit",
+    "btn_save": "Save Changes",
+    "btn_cancel": "Cancel",
+    "msg_welcome": "Welcome back",
+    "label_email": "Email Address",
+    "label_password": "Password",
+    "label_phone": "Phone Number"
+  }
+}

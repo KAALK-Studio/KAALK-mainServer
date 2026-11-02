@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ t('nav_pricing') }} - KAALK{% endblock %}
+{% block content %}
+<h2 style="text-align: center; margin-bottom: 8px;">{{ t('nav_pricing') }}</h2>
+<p style="text-align: center; color: var(--muted); margin-bottom: 30px;">Access specialized AutoCAD plugins, scripts, and updates directly inside your palette.</p>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+    {% for plan in plans %}
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; {% if plan.id == 'annual' %}border-color: var(--accent);{% endif %}">
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3>{{ plan.name }}</h3>
+                {% if plan.discount_badge %}
+                    <span class="badge badge-pro">{{ plan.discount_badge }}</span>
+                {% endif %}
+            </div>
+            <p style="color: var(--muted); font-size: 0.85rem; margin-top: 6px;">{{ plan.description }}</p>
+            
+            <div style="margin: 20px 0;">
+                <span style="font-size: 2rem; font-weight: bold;">
+                    {% if plan.price_toman == 0 %}
+                        Free
+                    {% else %}
+                        {{ "{:,}".format(plan.price_toman) }}
+                        <span style="font-size: 0.9rem; font-weight: normal;">Tomans</span>
+                    {% endif %}
+                </span>
+                <span style="color: var(--muted); font-size: 0.85rem;"> / {{ plan.billing_cycle }}</span>
+            </div>
+
+            <ul style="list-style: none; margin-top: 15px; font-size: 0.9rem;">
+                {% for feature in plan.features %}
+                <li style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--accent); font-weight: bold;">[x]</span> {{ feature }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div style="margin-top: 25px;">
+            {% if plan.price_toman > 0 %}
+                <a href="/checkout?plan_id={{ plan.id }}" class="btn btn-success" style="width: 100%; text-align: center;">Upgrade to Pro</a>
+            {% else %}
+                <a href="/register" class="btn" style="width: 100%; text-align: center; background: var(--surface-alt);">Get Started Free</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

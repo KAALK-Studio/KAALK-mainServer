@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}User Reviews & Ratings - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>User Reviews & Feedback Intelligence</h2>
+        <span style="color: var(--muted); font-size: 0.85rem;">Total Feedback Items: {{ comments|length }}</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Asset</th>
+                <th>Author</th>
+                <th>Rating</th>
+                <th>Comment Content</th>
+                <th style="text-align: center;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in comments %}
+            <tr>
+                <td style="font-size: 0.8rem; color: var(--muted); white-space: nowrap;">{{ c.created_at_short }}</td>
+                <td><strong style="color: var(--accent);">{{ c.asset_name }}</strong></td>
+                <td>{{ c.author }}</td>
+                <td>
+                    {% if c.rating_int and c.rating_int > 0 %}
+                        <span style="color: #ffb300; font-weight: bold;">
+                            {% for i in range(c.rating_int) %}★{% endfor %}{% for i in range(5 - c.rating_int) %}☆{% endfor %}
+                        </span>
+                        <span style="font-size: 0.75rem; color: var(--muted);">({{ c.rating_int }}/5)</span>
+                    {% else %}
+                        <span style="color: var(--muted); font-size: 0.8rem; font-style: italic;">No rating</span>
+                    {% endif %}
+                </td>
+                <td style="font-size: 0.85rem;">{{ c.text }}</td>
+                <td style="text-align: center;">
+                    <form action="/admin/reviews/{{ c.id }}/delete" method="POST" onsubmit="return confirm('Delete this comment?');">
+                        <button type="submit" class="btn-icon" style="color: var(--danger);" title="Remove Review">
+                            <svg viewBox="0 0 24 24">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not comments %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: var(--muted); padding: 20px;">No user reviews recorded yet.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

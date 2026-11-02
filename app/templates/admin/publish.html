@@ -1,0 +1,399 @@
+<!-- app/templates/admin/publish.html -->
+{% extends "base.html" %}
+{% block title %}Publish Asset Package - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Publish / Update AutoCAD Asset</h2>
+    <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 16px;">
+        Deploy assets with automatic bundle packaging, xxHash32 identifier generation, multi-command suites, and Markdown documentation.
+    </p>
+
+    {% if success %}
+        <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 16px;">{{ success }}</div>
+    {% endif %}
+
+    <form id="publishForm" action="/admin/publish" method="POST" enctype="multipart/form-data">
+        <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+            <div>
+                <label>Asset Slug (Unique Storage Path, e.g. drafting-suite)</label>
+                <input type="text" name="slug" placeholder="e.g. drafting-suite" required>
+                <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 8px;">Asset ID will be automatically calculated via xxHash32 based on this slug.</small>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Display Name</label>
+                <input type="text" name="name" required>
+            </div>
+            <div>
+                <label>Category</label>
+                <select name="type">
+                    <option value="tool">Tool / Suite</option>
+                    <option value="block">Block</option>
+                    <option value="font">Font</option>
+                    <option value="pattern">Pattern</option>
+                </select>
+            </div>
+            <div>
+                <label>Asset Status</label>
+                <select name="asset_status">
+                    <option value="stable" selected>Stable</option>
+                    <option value="beta">Beta</option>
+                    <option value="rc">RC (Release Candidate)</option>
+                    <option value="alpha">Alpha</option>
+                </select>
+            </div>
+            <div>
+                <label>Version (e.g. 1.0.0)</label>
+                <input type="text" name="version" required>
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <!-- Commands & Shortcuts Repeater -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+                <h3>Commands & Shortcuts</h3>
+                <p style="color: var(--muted); font-size: 0.8rem;">Define the AutoCAD commands, aliases, and lifecycle maturity status (Stable, Beta, Deprecated).</p>
+            </div>
+            <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
+        </div>
+
+        <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;"></div>
+        <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <label>Short Description (Catalog Index)</label>
+        <input type="text" name="short_desc" required>
+
+        <!-- Markdown Full Documentation with Live Preview -->
+        <div style="margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label style="margin-bottom: 0;">Full Documentation (Markdown Supported)</label>
+                <div style="display: flex; gap: 6px;">
+                    <button type="button" id="docWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleDocTab('write')">Write</button>
+                    <button type="button" id="docPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleDocTab('preview')">Live Preview</button>
+                </div>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 6px;">
+                Formatting tags: <code># Heading</code>, <code>**bold**</code>, <code>*italic*</code>, <code>`command`</code>, <code>- bullet item</code>, <code>> blockquote</code>
+            </div>
+            <textarea name="full_desc" id="fullDescInput" rows="5" placeholder="### Overview&#10;Write comprehensive tool instructions here..."></textarea>
+            <div id="fullDescPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 12px; border-radius: 4px; min-height: 120px; font-size: 0.9rem; margin-bottom: 14px;"></div>
+        </div>
+
+        <label>Tags (Comma separated, e.g. lisp, drafting, construction, lines)</label>
+        <input type="text" name="tags" placeholder="e.g. lisp, drafting, xlines">
+
+        <!-- Markdown Release Notes with Live Preview -->
+        <div style="margin-top: 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label style="margin-bottom: 0;">Release Notes for Version (Markdown Supported)</label>
+                <div style="display: flex; gap: 6px;">
+                    <button type="button" id="relWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleRelTab('write')">Write</button>
+                    <button type="button" id="relPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleRelTab('preview')">Live Preview</button>
+                </div>
+            </div>
+            <textarea name="release_notes" id="releaseNotesInput" rows="3" placeholder="- Initial release&#10;- Added `XLV` and `XLH` construction lines"></textarea>
+            <div id="releaseNotesPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 10px; border-radius: 4px; min-height: 70px; font-size: 0.85rem; margin-bottom: 14px;"></div>
+        </div>
+
+        <div style="margin: 8px 0 16px 0;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" name="is_pro" style="width: auto; margin: 0;"> Requires Active Pro Tier
+            </label>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <!-- Section 1: Icon and Logo Selection -->
+        <div>
+            <h3>Asset Icon & Identity</h3>
+            <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select square PNG/JPG logo (automatically resizes into 32x32 and 64x64 formats).</p>
+            <input type="file" name="icon_file" accept="image/*">
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <!-- Section 2: Package Source & Dependency Files -->
+        <h3>Package Source & Dependency Files</h3>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select executable .dll and dependency files (.dcl, .dwg). Designate the Main Entry Point.</p>
+
+        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+            <input type="file" id="sourcePicker" multiple>
+            <div id="sourcesQueue" style="margin-top: 10px;"></div>
+        </div>
+
+        <input type="hidden" name="entry_point" id="selectedEntryPoint" required>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+
+        <!-- Section 3: Tutorial Media & Screenshots -->
+        <h3>Tutorial Media & Screenshots (Unlimited)</h3>
+        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Queue visual guides, screenshots, or MP4 demo videos.</p>
+
+        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="file" id="mediaPicker" accept="image/*,video/*" style="margin-bottom: 0;">
+                <button type="button" class="btn" onclick="addMediaItem()">Queue Media</button>
+            </div>
+            <div id="mediaQueue" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="padding: 10px 24px; margin-top: 15px;">Build & Compile Bundle</button>
+    </form>
+</div>
+
+<script>
+function renderMarkdownPreview(raw) {
+    if (!raw) return '<em style="color: var(--muted);">No text entered.</em>';
+    let html = raw
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/^### (.*$)/gim, '<h4 style="margin: 8px 0 4px 0; color: var(--text);">$1</h4>')
+        .replace(/^## (.*$)/gim, '<h3 style="margin: 10px 0 6px 0; color: var(--text);">$1</h3>')
+        .replace(/^# (.*$)/gim, '<h2 style="margin: 12px 0 8px 0; color: var(--text);">$1</h2>')
+        .replace(/^\> (.*$)/gim, '<blockquote style="border-left: 3px solid var(--accent); padding-left: 8px; margin: 6px 0; color: var(--muted); font-style: italic;">$1</blockquote>')
+        .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+        .replace(/`([^`]+)`/gim, '<code style="background: var(--surface); padding: 2px 4px; border-radius: 3px; color: var(--accent); font-family: monospace;">$1</code>')
+        .replace(/^\- (.*$)/gim, '<li style="margin-left: 18px;">$1</li>')
+        .replace(/\n$/gim, '<br />');
+    return html;
+}
+
+function toggleDocTab(mode) {
+    const input = document.getElementById('fullDescInput');
+    const preview = document.getElementById('fullDescPreview');
+    const writeBtn = document.getElementById('docWriteTab');
+    const prevBtn = document.getElementById('docPreviewTab');
+
+    if (mode === 'preview') {
+        preview.innerHTML = renderMarkdownPreview(input.value);
+        input.style.display = 'none';
+        preview.style.display = 'block';
+        prevBtn.style.background = 'var(--accent)';
+        writeBtn.style.background = 'var(--surface-alt)';
+    } else {
+        input.style.display = 'block';
+        preview.style.display = 'none';
+        writeBtn.style.background = 'var(--accent)';
+        prevBtn.style.background = 'var(--surface-alt)';
+    }
+}
+
+function toggleRelTab(mode) {
+    const input = document.getElementById('releaseNotesInput');
+    const preview = document.getElementById('releaseNotesPreview');
+    const writeBtn = document.getElementById('relWriteTab');
+    const prevBtn = document.getElementById('relPreviewTab');
+
+    if (mode === 'preview') {
+        preview.innerHTML = renderMarkdownPreview(input.value);
+        input.style.display = 'none';
+        preview.style.display = 'block';
+        prevBtn.style.background = 'var(--accent)';
+        writeBtn.style.background = 'var(--surface-alt)';
+    } else {
+        input.style.display = 'block';
+        preview.style.display = 'none';
+        writeBtn.style.background = 'var(--accent)';
+        prevBtn.style.background = 'var(--surface-alt)';
+    }
+}
+
+const commandsContainer = document.getElementById('commandsContainer');
+
+function addCommandRow(command = '', alias = '', title = '', status = 'stable', description = '', deprecationNotice = '') {
+    const row = document.createElement('div');
+    row.className = 'command-row';
+    row.style = 'background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;';
+    row.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+            <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
+            <div>
+                <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
+                <input type="text" class="cmd-name" value="${command}" placeholder="XLV" required style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
+                <input type="text" class="cmd-alias" value="${alias}" placeholder="XV" style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Status</label>
+                <select class="cmd-status" style="margin-bottom: 0;">
+                    <option value="stable" ${status === 'stable' ? 'selected' : ''}>Stable</option>
+                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta (Experimental)</option>
+                    <option value="deprecated" ${status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Title</label>
+                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+                <label style="font-size: 0.75rem;">Description</label>
+                <input type="text" class="cmd-desc" value="${description}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
+                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+            </div>
+        </div>
+    `;
+    commandsContainer.appendChild(row);
+}
+
+// Add default row
+addCommandRow();
+
+const sourcePicker = document.getElementById('sourcePicker');
+const sourcesQueue = document.getElementById('sourcesQueue');
+const entryPointInput = document.getElementById('selectedEntryPoint');
+let fileStore = new DataTransfer();
+
+sourcePicker.addEventListener('change', () => {
+    for (let file of sourcePicker.files) {
+        fileStore.items.add(file);
+    }
+    renderSources();
+    sourcePicker.value = '';
+});
+
+function renderSources() {
+    sourcesQueue.innerHTML = '';
+    const executableExts = ['.dll', '.lsp', '.vlx', '.fas'];
+    
+    Array.from(fileStore.files).forEach((file, index) => {
+        const ext = '.' + file.name.split('.').pop().toLowerCase();
+        const isExec = executableExts.includes(ext);
+
+        const row = document.createElement('div');
+        row.style = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px;';
+        
+        let radioHtml = isExec ? 
+            `<label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; margin: 0;">
+                <input type="radio" name="entry_choice" value="${file.name}" onchange="setEntryPoint('${file.name}')" ${entryPointInput.value === file.name || (index===0 && !entryPointInput.value) ? 'checked' : ''}>
+                Main Entry Point
+             </label>` : `<span style="font-size: 0.75rem; color: var(--muted);">Resource / Dependency</span>`;
+
+        if (isExec && (!entryPointInput.value || index === 0)) {
+            entryPointInput.value = file.name;
+        }
+
+        row.innerHTML = `
+            <div>
+                <strong>${file.name}</strong> 
+                <span style="color: var(--muted); font-size: 0.75rem; margin-left: 8px;">(${(file.size/1024).toFixed(1)} KB)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px;">
+                ${radioHtml}
+                <button type="button" onclick="removeSource(${index})" class="btn-icon" style="color: var(--danger);">✕</button>
+            </div>
+        `;
+        sourcesQueue.appendChild(row);
+    });
+}
+
+function setEntryPoint(name) {
+    entryPointInput.value = name;
+}
+
+function removeSource(index) {
+    const dt = new DataTransfer();
+    const files = Array.from(fileStore.files);
+    files.splice(index, 1);
+    files.forEach(f => dt.items.add(f));
+    fileStore = dt;
+    if (files.length === 0) entryPointInput.value = '';
+    renderSources();
+}
+
+const mediaPicker = document.getElementById('mediaPicker');
+const mediaQueue = document.getElementById('mediaQueue');
+let mediaStore = new DataTransfer();
+
+function addMediaItem() {
+    if (!mediaPicker.files || mediaPicker.files.length === 0) return;
+    const file = mediaPicker.files[0];
+    mediaStore.items.add(file);
+    
+    const idx = mediaStore.files.length - 1;
+    const card = document.createElement('div');
+    card.id = `media-item-${idx}`;
+    card.style = 'background: var(--surface); padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;';
+    card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; font-size: 0.85rem;">${file.name}</span>
+            <button type="button" onclick="removeMedia(${idx})" class="btn-icon" style="color: var(--danger);">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+            <input type="text" name="media_titles" placeholder="Media Title" style="margin-bottom: 0;">
+            <input type="text" name="media_descriptions" placeholder="Caption / Instructions" style="margin-bottom: 0;">
+        </div>
+    `;
+    mediaQueue.appendChild(card);
+    mediaPicker.value = '';
+}
+
+function removeMedia(idx) {
+    const el = document.getElementById(`media-item-${idx}`);
+    if (el) el.remove();
+}
+
+document.getElementById('publishForm').addEventListener('submit', (e) => {
+    if (fileStore.files.length === 0) {
+        alert('Please add at least one source file.');
+        e.preventDefault();
+        return;
+    }
+    if (!entryPointInput.value) {
+        alert('Please select an executable file (.dll) as the Main Entry Point.');
+        e.preventDefault();
+        return;
+    }
+
+    const commandRows = document.querySelectorAll('.command-row');
+    const commandsList = [];
+    commandRows.forEach(row => {
+        const cmdName = row.querySelector('.cmd-name').value.trim();
+        if (cmdName) {
+            commandsList.push({
+                command: cmdName,
+                alias: row.querySelector('.cmd-alias').value.trim(),
+                title: row.querySelector('.cmd-title').value.trim(),
+                status: row.querySelector('.cmd-status').value,
+                description: row.querySelector('.cmd-desc').value.trim(),
+                deprecation_notice: row.querySelector('.cmd-dep-notice').value.trim()
+            });
+        }
+    });
+    document.getElementById('commandsJsonPayload').value = JSON.stringify(commandsList);
+    
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.name = 'source_files';
+    fileInput.multiple = true;
+    fileInput.files = fileStore.files;
+    fileInput.style.display = 'none';
+    e.target.appendChild(fileInput);
+
+    if (mediaStore.files.length > 0) {
+        const mInput = document.createElement('input');
+        mInput.type = 'file';
+        mInput.name = 'media_files';
+        mInput.multiple = true;
+        mInput.files = mediaStore.files;
+        mInput.style.display = 'none';
+        e.target.appendChild(mInput);
+    }
+});
+</script>
+{% endblock %}

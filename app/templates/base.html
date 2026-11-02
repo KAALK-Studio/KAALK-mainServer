@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="{{ locale.code }}" dir="{{ locale.dir }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{{ t('portal_title') }}{% endblock %}</title>
+    
+    {% if locale.font_url %}
+    <link rel="stylesheet" href="{{ locale.font_url }}">
+    {% endif %}
+
+    <style>
+        :root {
+            --bg: #1e1e20;
+            --surface: #252526;
+            --surface-alt: #333337;
+            --accent: #007acc;
+            --text: #f1f1f1;
+            --muted: #a0a0a5;
+            --border: #3f3f46;
+            --danger: #d13438;
+            --success: #107c41;
+            --warning: #ff9800;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: {{ locale.font_family | safe }};
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            direction: {{ locale.dir }};
+            text-align: {% if locale.dir == 'rtl' %}right{% else %}left{% endif %};
+        }
+        nav {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        nav .brand { font-weight: bold; font-size: 1.1rem; color: var(--accent); text-decoration: none; }
+        nav .links a {
+            color: var(--text);
+            text-decoration: none;
+            {% if locale.dir == 'rtl' %}margin-right: 18px;{% else %}margin-left: 18px;{% endif %}
+            font-size: 0.9rem;
+        }
+        nav .links a:hover { color: var(--accent); }
+        .lang-select {
+            background: var(--surface-alt);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            {% if locale.dir == 'rtl' %}margin-right: 15px;{% else %}margin-left: 15px;{% endif %}
+        }
+        .container { flex: 1; max-width: 1100px; margin: 30px auto; padding: 0 15px; width: 100%; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 24px; margin-bottom: 20px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--accent); color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; border: none; cursor: pointer; font-size: 0.85rem; font-weight: bold; height: 28px; vertical-align: middle; }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+        
+        /* Unified 28px button icon with transparent fill and stroke */
+        .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            vertical-align: middle;
+            transition: all 0.15s ease;
+        }
+        .btn-icon:hover {
+            background: var(--surface);
+            border-color: var(--accent);
+        }
+        .btn-icon svg {
+            width: 15px;
+            height: 15px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        input, select, textarea { width: 100%; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 4px; margin-top: 6px; margin-bottom: 14px; font-size: 0.9rem; }
+        label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
+        th, td { border: 1px solid var(--border); padding: 10px; text-align: {% if locale.dir == 'rtl' %}right{% else %}left{% endif %}; }
+        th { background: var(--surface-alt); }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/" class="brand">{{ t('portal_title') }}</a>
+        <div class="links" style="display: flex; align-items: center;">
+            {% if user %}
+                {% if user.is_admin %}
+                    <a href="/admin">{{ t('nav_dashboard') }}</a>
+                    <a href="/admin/assets">{{ t('nav_assets') }}</a>
+                    <a href="/admin/plans">{{ t('nav_plans') }}</a>
+                    <a href="/admin/users">{{ t('nav_users') }}</a>
+                    <a href="/admin/reviews">{{ t('nav_reviews') }}</a>
+                {% else %}
+                    <a href="/dashboard">{{ t('nav_dashboard') }}</a>
+                    <a href="/pricing">{{ t('nav_pricing') }}</a>
+                {% endif %}
+                <a href="/logout">{{ t('nav_logout') }}</a>
+            {% else %}
+                <a href="/pricing">{{ t('nav_pricing') }}</a>
+                <a href="/login">{{ t('nav_login') }}</a>
+                <a href="/register">{{ t('nav_register') }}</a>
+            {% endif %}
+
+            <select class="lang-select" onchange="location.href='/set-language/' + this.value;">
+                {% for l in available_languages %}
+                    <option value="{{ l.code }}" {% if l.code == locale.code %}selected{% endif %}>{{ l.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </nav>
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

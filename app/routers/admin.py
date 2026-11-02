@@ -18,6 +18,27 @@ def require_admin(request: Request):
         raise HTTPException(status_code=403, detail="Admin privileges required.")
     return user
 
+def normalize_commands_payload(raw_payload: str) -> List[dict]:
+    try:
+        commands_list = json.loads(raw_payload) if raw_payload else []
+    except Exception:
+        commands_list = []
+
+    normalized = []
+    for cmd in commands_list:
+        if isinstance(cmd, dict) and cmd.get("command"):
+            clean_cmd = str(cmd.get("command", "")).strip().upper()
+            if clean_cmd:
+                normalized.append({
+                    "command": clean_cmd,
+                    "alias": str(cmd.get("alias", "")).strip().upper(),
+                    "title": str(cmd.get("title", "")).strip(),
+                    "status": str(cmd.get("status", "stable")).strip().lower(),
+                    "description": str(cmd.get("description", "")).strip(),
+                    "deprecation_notice": str(cmd.get("deprecation_notice", "")).strip()
+                })
+    return normalized
+
 @router.get("", response_class=HTMLResponse)
 def admin_dashboard(request: Request):
     user = require_admin(request)
@@ -348,10 +369,7 @@ async def update_asset_action(request: Request,
     except Exception:
         updated_media = []
 
-    try:
-        updated_commands = json.loads(commands_json_payload)
-    except Exception:
-        updated_commands = []
+    updated_commands = normalize_commands_payload(commands_json_payload)
 
     if new_media_files and len(new_media_files) > 0 and new_media_files[0].filename:
         added_media = PackageService.save_media_items(slug, new_media_files, new_media_titles, new_media_descriptions)
@@ -390,8 +408,6 @@ async def update_asset_action(request: Request,
         name="admin/asset_edit.html",
         context={"request": request, "user": user, "asset": updated_asset, "success": "Asset updated successfully."}
     )
-
-# --- Version Management & Deployment ---
 
 @router.get("/assets/{asset_id}/versions", response_class=HTMLResponse)
 def asset_versions_page(request: Request, asset_id: str, success: Optional[str] = Query(None)):
@@ -486,13 +502,10 @@ async def deploy_version_action(request: Request,
         )
 
     slug = asset["slug"]
-    try:
-        commands_list = json.loads(commands_json_payload)
-    except Exception:
-        commands_list = []
+    commands_list = normalize_commands_payload(commands_json_payload)
 
     pkg_info = PackageService.build_package_bundle(
-        slug, version, source_files, entry_point, commands_list
+        slug, version, source_files, entry_point, commands_list, asset["name"]
     )
 
     now = datetime.datetime.utcnow().isoformat()
@@ -545,8 +558,6 @@ def delete_asset_action(request: Request, asset_id: str):
     conn.close()
     return RedirectResponse("/admin/assets", status_code=302)
 
-# --- Publishing ---
-
 @router.get("/publish", response_class=HTMLResponse)
 def publish_page(request: Request):
     user = require_admin(request)
@@ -580,7 +591,6 @@ async def publish_action(request: Request,
     user = require_admin(request)
     slug = slug.strip().lower()
 
-    # Automatically derive deterministic xxHash32 Asset ID if not explicitly provided
     computed_asset_id = asset_id.strip() if (asset_id and asset_id.strip()) else PackageService.generate_asset_id(slug)
 
     thumb_32_url, thumb_64_url = "", ""
@@ -588,14 +598,10 @@ async def publish_action(request: Request,
         thumb_32_url, thumb_64_url = PackageService.process_icon(slug, icon_file)
 
     media_data = PackageService.save_media_items(slug, media_files, media_titles, media_descriptions)
-
-    try:
-        commands_list = json.loads(commands_json_payload)
-    except Exception:
-        commands_list = []
+    commands_list = normalize_commands_payload(commands_json_payload)
 
     pkg_info = PackageService.build_package_bundle(
-        slug, version.strip(), source_files, entry_point.strip(), commands_list
+        slug, version.strip(), source_files, entry_point.strip(), commands_list, name.strip()
     )
 
     conn = get_db()
@@ -642,8 +648,6 @@ async def publish_action(request: Request,
         name="admin/publish.html",
         context={"request": request, "user": user, "success": f"Asset '{name}' (ID: {computed_asset_id}) published successfully."}
     )
-
-# --- Plans ---
 
 @router.get("/plans", response_class=HTMLResponse)
 def plans_page(request: Request):
@@ -710,8 +714,6 @@ def update_plan_action(request: Request,
         name="admin/plans.html",
         context={"request": request, "user": user, "plans": formatted, "success": f"Plan '{name}' successfully updated."}
     )
-
-# --- Reviews ---
 
 @router.get("/reviews", response_class=HTMLResponse)
 def reviews_page(request: Request):

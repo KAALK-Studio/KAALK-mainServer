@@ -33,9 +33,21 @@ def get_catalog(type: Optional[str] = Query(None)):
         rating_val = float(r["rating"]) if (r["rating_count"] and r["rating_count"] > 0 and r["rating"] is not None) else 0.0
 
         try:
-            commands_list = json.loads(r["commands_json"]) if r["commands_json"] else []
+            raw_commands = json.loads(r["commands_json"]) if r["commands_json"] else []
         except Exception:
-            commands_list = []
+            raw_commands = []
+
+        cleaned_commands = []
+        for c in raw_commands:
+            if isinstance(c, dict) and c.get("command"):
+                cleaned_commands.append({
+                    "command": str(c.get("command", "")).strip().upper(),
+                    "alias": str(c.get("alias", "")).strip().upper(),
+                    "title": str(c.get("title", "")).strip(),
+                    "status": str(c.get("status", "stable")).strip().lower(),
+                    "description": str(c.get("description", "")).strip(),
+                    "deprecation_notice": str(c.get("deprecation_notice", "")).strip()
+                })
 
         assets.append({
             "id": r["id"],
@@ -49,7 +61,7 @@ def get_catalog(type: Optional[str] = Query(None)):
             "is_pro": bool(r["is_pro"]),
             "rating": rating_val,
             "dev": r["dev_name"] or "KAALK Studio",
-            "commands": commands_list,
+            "commands": cleaned_commands,
             "tags": r["tags"] or ""
         })
 
@@ -83,9 +95,21 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
 
     for v in versions_rows:
         try:
-            v_commands = json.loads(v["commands_json"]) if v["commands_json"] else []
+            raw_v_commands = json.loads(v["commands_json"]) if v["commands_json"] else []
         except Exception:
-            v_commands = []
+            raw_v_commands = []
+
+        cleaned_v_commands = []
+        for c in raw_v_commands:
+            if isinstance(c, dict) and c.get("command"):
+                cleaned_v_commands.append({
+                    "command": str(c.get("command", "")).strip().upper(),
+                    "alias": str(c.get("alias", "")).strip().upper(),
+                    "title": str(c.get("title", "")).strip(),
+                    "status": str(c.get("status", "stable")).strip().lower(),
+                    "description": str(c.get("description", "")).strip(),
+                    "deprecation_notice": str(c.get("deprecation_notice", "")).strip()
+                })
 
         item = {
             "version": v["version"],
@@ -93,7 +117,7 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
             "download_url": v["download_url"],
             "file_size": v["file_size"],
             "sha256": v["sha256"],
-            "commands": v_commands,
+            "commands": cleaned_v_commands,
             "created_at": v["created_at"]
         }
         version_history.append(item)
@@ -124,7 +148,18 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
     active_commands = selected_version_data["commands"] if (selected_version_data and selected_version_data.get("commands")) else []
     if not active_commands:
         try:
-            active_commands = json.loads(asset["commands_json"]) if asset["commands_json"] else []
+            raw_fallback = json.loads(asset["commands_json"]) if asset["commands_json"] else []
+            active_commands = [
+                {
+                    "command": str(c.get("command", "")).strip().upper(),
+                    "alias": str(c.get("alias", "")).strip().upper(),
+                    "title": str(c.get("title", "")).strip(),
+                    "status": str(c.get("status", "stable")).strip().lower(),
+                    "description": str(c.get("description", "")).strip(),
+                    "deprecation_notice": str(c.get("deprecation_notice", "")).strip()
+                }
+                for c in raw_fallback if isinstance(c, dict) and c.get("command")
+            ]
         except Exception:
             active_commands = []
 

@@ -3,8 +3,8 @@ import datetime
 import secrets
 from fastapi import APIRouter, HTTPException, status, Request
 from app.database import get_db
-from app.security import hash_password, verify_password, create_jwt_token
-from app.schemas import RegisterRequest, LoginRequest, ForgotPasswordRequest, AuthResponse
+from app.security import hash_password, verify_password, create_jwt_token, decode_token
+from app.schemas import RegisterRequest, LoginRequest, ForgotPasswordRequest, AuthResponse, RefreshSessionRequest
 
 router = APIRouter(prefix="/api/auth", tags=["AutoCAD Auth API"])
 
@@ -79,6 +79,70 @@ def login(req: LoginRequest, request: Request):
         else:
             is_active_pro = True
             remaining_days = 0
+
+    display_name = f"{row['first_name']} {row['last_name']}".strip()
+    token, expires_in = create_jwt_token(
+        req.email.lower().strip(),
+        display_name,
+        is_admin,
+        "premium" if is_active_pro else "free"
+    )
+
+    return AuthResponse(
+        success=True,
+        accessToken=token,
+        refreshToken=secrets.token_hex(32),
+        expiresIn=expires_in,
+        userName=display_name,
+        email=req.email.lower().strip(),
+        phone=row["phone"] or "",
+        isPro=is_active_pro,
+        subscriptionTier="premium" if is_active_pro else "free",
+        subscriptionExpiresAt=sub_expires_at,
+        remainingDays=remaining_days
+    )
+
+@router.post("/refresh", response_model=AuthResponse)
+def refresh_session(req: RefreshSessionRequest, request: Request):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT id, first_name, last_name, phone, is_admin,
+           subscription_tier, subscription_expires_at
+    FROM users WHERE email = ?
+    """, (req.email.lower().strip(),))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User account not found.")
+
+    is_admin = bool(row["is_admin"])
+    tier = row["subscription_tier"] or "free"
+    sub_expires_at = row["subscription_expires_at"]
+    remaining_days = 0
+    is_active_pro = is_admin
+
+    if tier == "premium":
+        if sub_expires_at:
+            try:
+                exp_dt = datetime.datetime.fromisoformat(sub_expires_at)
+                diff = exp_dt - datetime.datetime.utcnow()
+                if diff.total_seconds() > 0:
+                    is_active_pro = True
+                    remaining_days = int((diff.total_seconds() + 86399) // 86400)
+                else:
+                    is_active_pro = is_admin
+            except Exception:
+                is_active_pro = is_admin
+        else:
+            is_active_pro = True
+            remaining_days = 0
+
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    cursor.execute("UPDATE users SET last_ip = ? WHERE id = ?", (client_ip, row["id"]))
+    conn.commit()
+    conn.close()
 
     display_name = f"{row['first_name']} {row['last_name']}".strip()
     token, expires_in = create_jwt_token(

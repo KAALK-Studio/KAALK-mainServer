@@ -17,6 +17,10 @@ class LoginRequest(BaseModel):
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
+class RefreshSessionRequest(BaseModel):
+    email: EmailStr
+    token: Optional[str] = ""
+
 class AuthResponse(BaseModel):
     success: bool
     accessToken: str

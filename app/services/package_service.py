@@ -6,6 +6,7 @@ import zipfile
 import json
 import uuid
 import struct
+import re
 from typing import List, Tuple
 from fastapi import UploadFile
 from PIL import Image
@@ -173,9 +174,13 @@ class PackageService:
         normalized_commands = []
         for cmd in commands:
             if isinstance(cmd, dict) and cmd.get("command"):
+                raw_alias = str(cmd.get("alias", "")).strip().upper()
+                alias_parts = [p.strip() for p in re.split(r"[,;]+", raw_alias) if p.strip()]
+                normalized_alias = ", ".join(alias_parts)
+
                 normalized_commands.append({
                     "command": str(cmd.get("command", "")).strip().upper(),
-                    "alias": str(cmd.get("alias", "")).strip().upper(),
+                    "alias": normalized_alias,
                     "title": str(cmd.get("title", "")).strip(),
                     "status": str(cmd.get("status", "stable")).strip().lower(),
                     "description": str(cmd.get("description", "")).strip(),

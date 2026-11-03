@@ -2,6 +2,7 @@
 import os
 import json
 import datetime
+import re
 from typing import List, Optional
 from fastapi import APIRouter, Request, Form, UploadFile, File, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -28,10 +29,14 @@ def normalize_commands_payload(raw_payload: str) -> List[dict]:
     for cmd in commands_list:
         if isinstance(cmd, dict) and cmd.get("command"):
             clean_cmd = str(cmd.get("command", "")).strip().upper()
+            raw_alias = str(cmd.get("alias", "")).strip().upper()
+            alias_parts = [p.strip() for p in re.split(r"[,;]+", raw_alias) if p.strip()]
+            normalized_alias = ", ".join(alias_parts)
+
             if clean_cmd:
                 normalized.append({
                     "command": clean_cmd,
-                    "alias": str(cmd.get("alias", "")).strip().upper(),
+                    "alias": normalized_alias,
                     "title": str(cmd.get("title", "")).strip(),
                     "status": str(cmd.get("status", "stable")).strip().lower(),
                     "description": str(cmd.get("description", "")).strip(),

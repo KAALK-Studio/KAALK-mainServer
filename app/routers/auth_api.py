@@ -3,7 +3,7 @@ import datetime
 import secrets
 from fastapi import APIRouter, HTTPException, status, Request
 from app.database import get_db
-from app.security import hash_password, verify_password, create_jwt_token, decode_token
+from app.security import hash_password, verify_password, create_jwt_token
 from app.schemas import RegisterRequest, LoginRequest, ForgotPasswordRequest, AuthResponse, RefreshSessionRequest
 
 router = APIRouter(prefix="/api/auth", tags=["AutoCAD Auth API"])

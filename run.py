@@ -1,3 +1,4 @@
+# run.py
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
@@ -36,4 +37,13 @@ app.include_router(web.router)
 app.include_router(admin.router)
 
 if __name__ == "__main__":
-    uvicorn.run("run:app", host="127.0.0.1", port=5000, reload=True)
+    # Bound to port 8080 for Nginx reverse proxy routing
+    # Enabled proxy_headers and forwarded_allow_ips to accurately preserve real client IPs and HTTPS scheme
+    uvicorn.run(
+        "run:app",
+        host="127.0.0.1",
+        port=8080,
+        reload=True,
+        proxy_headers=True,
+        forwarded_allow_ips="*"
+    )

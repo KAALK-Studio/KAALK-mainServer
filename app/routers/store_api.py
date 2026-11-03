@@ -1,6 +1,7 @@
 # app/routers/store_api.py
 import json
 import datetime
+import re
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, status
 from app.database import get_db
@@ -40,9 +41,13 @@ def get_catalog(type: Optional[str] = Query(None)):
         cleaned_commands = []
         for c in raw_commands:
             if isinstance(c, dict) and c.get("command"):
+                raw_alias = str(c.get("alias", "")).strip().upper()
+                alias_parts = [p.strip() for p in re.split(r"[,;]+", raw_alias) if p.strip()]
+                normalized_alias = ", ".join(alias_parts)
+
                 cleaned_commands.append({
                     "command": str(c.get("command", "")).strip().upper(),
-                    "alias": str(c.get("alias", "")).strip().upper(),
+                    "alias": normalized_alias,
                     "title": str(c.get("title", "")).strip(),
                     "status": str(c.get("status", "stable")).strip().lower(),
                     "description": str(c.get("description", "")).strip(),
@@ -102,9 +107,13 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
         cleaned_v_commands = []
         for c in raw_v_commands:
             if isinstance(c, dict) and c.get("command"):
+                raw_alias = str(c.get("alias", "")).strip().upper()
+                alias_parts = [p.strip() for p in re.split(r"[,;]+", raw_alias) if p.strip()]
+                normalized_alias = ", ".join(alias_parts)
+
                 cleaned_v_commands.append({
                     "command": str(c.get("command", "")).strip().upper(),
-                    "alias": str(c.get("alias", "")).strip().upper(),
+                    "alias": normalized_alias,
                     "title": str(c.get("title", "")).strip(),
                     "status": str(c.get("status", "stable")).strip().lower(),
                     "description": str(c.get("description", "")).strip(),
@@ -149,17 +158,20 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
     if not active_commands:
         try:
             raw_fallback = json.loads(asset["commands_json"]) if asset["commands_json"] else []
-            active_commands = [
-                {
-                    "command": str(c.get("command", "")).strip().upper(),
-                    "alias": str(c.get("alias", "")).strip().upper(),
-                    "title": str(c.get("title", "")).strip(),
-                    "status": str(c.get("status", "stable")).strip().lower(),
-                    "description": str(c.get("description", "")).strip(),
-                    "deprecation_notice": str(c.get("deprecation_notice", "")).strip()
-                }
-                for c in raw_fallback if isinstance(c, dict) and c.get("command")
-            ]
+            active_commands = []
+            for c in raw_fallback:
+                if isinstance(c, dict) and c.get("command"):
+                    raw_alias = str(c.get("alias", "")).strip().upper()
+                    alias_parts = [p.strip() for p in re.split(r"[,;]+", raw_alias) if p.strip()]
+                    normalized_alias = ", ".join(alias_parts)
+                    active_commands.append({
+                        "command": str(c.get("command", "")).strip().upper(),
+                        "alias": normalized_alias,
+                        "title": str(c.get("title", "")).strip(),
+                        "status": str(c.get("status", "stable")).strip().lower(),
+                        "description": str(c.get("description", "")).strip(),
+                        "deprecation_notice": str(c.get("deprecation_notice", "")).strip()
+                    })
         except Exception:
             active_commands = []
 

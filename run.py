@@ -11,7 +11,7 @@ from app.routers import auth_api, store_api, web, admin
 init_db()
 
 # Initialize FastAPI application instance
-app = FastAPI(title="KAALK Platform Service", version="1.0.0")
+app = FastAPI(title="KAALK Platform Service", version="0.2.0")
 
 # Mount storage directory for direct binary package downloads
 app.mount("/static", StaticFiles(directory=STORAGE_DIR), name="static")
@@ -37,8 +37,6 @@ app.include_router(web.router)
 app.include_router(admin.router)
 
 if __name__ == "__main__":
-    # Bound to port 8080 for Nginx reverse proxy routing
-    # Enabled proxy_headers and forwarded_allow_ips to accurately preserve real client IPs and HTTPS scheme
     uvicorn.run(
         "run:app",
         host="127.0.0.1",

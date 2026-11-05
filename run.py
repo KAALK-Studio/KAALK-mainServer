@@ -11,7 +11,7 @@ from app.routers import auth_api, store_api, web, admin
 init_db()
 
 # Initialize FastAPI application instance
-app = FastAPI(title="KAALK Platform Service", version="0.2.0")
+app = FastAPI(title="KAALK Platform Service", version="0.3.0")
 
 # Mount storage directory for direct binary package downloads
 app.mount("/static", StaticFiles(directory=STORAGE_DIR), name="static")

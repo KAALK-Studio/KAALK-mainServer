@@ -1,7 +1,6 @@
 # app/routers/web.py
 import datetime
 import json
-import re
 from typing import Optional
 from fastapi import APIRouter, Request, Form, Response, status, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -27,7 +26,7 @@ def index(request: Request):
         context={"request": request, "user": user, "content": content}
     )
 
-# ----------------- ASSET STORE (PUBLIC BROWSING ONLY) -----------------
+# ----------------- ASSET STORE -----------------
 @router.get("/assets", response_class=HTMLResponse)
 def assets_store_catalog(request: Request,
                          type: Optional[str] = Query(None),

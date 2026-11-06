@@ -1,7 +1,9 @@
+<!-- app/templates/base.html -->
 <!DOCTYPE html>
 <html lang="{{ locale.code }}" dir="{{ locale.dir }}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ t('portal_title') }}{% endblock %}</title>
     
     {% if locale.font_url %}
@@ -10,13 +12,14 @@
 
     <style>
         :root {
-            --bg: #1e1e20;
-            --surface: #252526;
-            --surface-alt: #333337;
+            --bg: #18181a;
+            --surface: #222225;
+            --surface-alt: #2c2c30;
             --accent: #007acc;
+            --accent-hover: #1c8edc;
             --text: #f1f1f1;
             --muted: #a0a0a5;
-            --border: #3f3f46;
+            --border: #38383e;
             --danger: #d13438;
             --success: #107c41;
             --warning: #ff9800;
@@ -39,36 +42,127 @@
         nav {
             background: var(--surface);
             border-bottom: 1px solid var(--border);
-            padding: 12px 24px;
+            padding: 10px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        nav .brand { font-weight: bold; font-size: 1.1rem; color: var(--accent); text-decoration: none; }
-        nav .links a {
+        nav .brand { 
+            font-weight: 800; 
+            font-size: 1.2rem; 
+            color: var(--accent); 
+            text-decoration: none; 
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        nav .nav-center {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+        nav .nav-center a {
             color: var(--text);
             text-decoration: none;
-            {% if locale.dir == 'rtl' %}margin-right: 18px;{% else %}margin-left: 18px;{% endif %}
             font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.15s ease;
         }
-        nav .links a:hover { color: var(--accent); }
-        .lang-select {
+        nav .nav-center a:hover { 
+            color: var(--accent); 
+        }
+
+        /* Click-to-Toggle Account Dropdown */
+        .account-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .account-btn {
             background: var(--surface-alt);
-            color: var(--text);
             border: 1px solid var(--border);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
+            color: var(--text);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            {% if locale.dir == 'rtl' %}margin-right: 15px;{% else %}margin-left: 15px;{% endif %}
+            transition: all 0.2s ease;
         }
-        .container { flex: 1; max-width: 1100px; margin: 30px auto; padding: 0 15px; width: 100%; }
+        .account-btn:hover, .account-btn.active {
+            border-color: var(--accent);
+            background: var(--surface);
+        }
+        .account-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            {% if locale.dir == 'rtl' %}left: 0;{% else %}right: 0;{% endif %}
+            top: calc(100% + 8px);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            min-width: 210px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.65);
+            padding: 8px 0;
+            z-index: 200;
+        }
+        .dropdown-menu.show {
+            display: block;
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 16px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: background 0.15s ease;
+        }
+        .dropdown-item:hover {
+            background: var(--surface-alt);
+            color: var(--accent);
+        }
+        .dropdown-item svg {
+            width: 15px;
+            height: 15px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+        }
+        .dropdown-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 6px 0;
+        }
+        .dropdown-header {
+            padding: 6px 16px;
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .container { flex: 1; max-width: 1140px; margin: 30px auto; padding: 0 15px; width: 100%; }
         .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 24px; margin-bottom: 20px; }
-        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--accent); color: #fff; padding: 6px 14px; border-radius: 4px; text-decoration: none; border: none; cursor: pointer; font-size: 0.85rem; font-weight: bold; height: 28px; vertical-align: middle; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--accent); color: #fff; padding: 8px 16px; border-radius: 4px; text-decoration: none; border: none; cursor: pointer; font-size: 0.85rem; font-weight: bold; vertical-align: middle; transition: background 0.15s ease; }
+        .btn:hover { background: var(--accent-hover); }
         .btn-success { background: var(--success); }
         .btn-danger { background: var(--danger); }
         
-        /* Unified 28px button icon with transparent fill and stroke */
         .btn-icon {
             display: inline-flex;
             align-items: center;
@@ -103,39 +197,127 @@
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
         th, td { border: 1px solid var(--border); padding: 10px; text-align: {% if locale.dir == 'rtl' %}right{% else %}left{% endif %}; }
         th { background: var(--surface-alt); }
+        .badge { padding: 3px 7px; border-radius: 3px; font-size: 0.75rem; font-weight: bold; }
+        .badge-pro { background: rgba(0,122,204,0.25); color: #4fc3f7; border: 1px solid var(--accent); }
+        .badge-free { background: var(--surface-alt); color: var(--muted); border: 1px solid var(--border); }
+        .badge-stable { background: rgba(16,124,65,0.25); color: #66bb6a; border: 1px solid var(--success); }
+        .badge-beta { background: rgba(230,81,0,0.25); color: #ffa726; border: 1px solid #e65100; }
+        .alert { padding: 12px; border-left: 4px solid var(--accent); background: var(--surface-alt); border-radius: 4px; margin-bottom: 15px; }
+
+        footer {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 20px 24px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-top: auto;
+        }
     </style>
 </head>
 <body>
     <nav>
-        <a href="/" class="brand">{{ t('portal_title') }}</a>
-        <div class="links" style="display: flex; align-items: center;">
-            {% if user %}
-                {% if user.is_admin %}
-                    <a href="/admin">{{ t('nav_dashboard') }}</a>
-                    <a href="/admin/assets">{{ t('nav_assets') }}</a>
-                    <a href="/admin/plans">{{ t('nav_plans') }}</a>
-                    <a href="/admin/users">{{ t('nav_users') }}</a>
-                    <a href="/admin/reviews">{{ t('nav_reviews') }}</a>
-                {% else %}
-                    <a href="/dashboard">{{ t('nav_dashboard') }}</a>
-                    <a href="/pricing">{{ t('nav_pricing') }}</a>
-                {% endif %}
-                <a href="/logout">{{ t('nav_logout') }}</a>
-            {% else %}
-                <a href="/pricing">{{ t('nav_pricing') }}</a>
-                <a href="/login">{{ t('nav_login') }}</a>
-                <a href="/register">{{ t('nav_register') }}</a>
-            {% endif %}
+        <a href="/" class="brand">
+            <svg style="width: 22px; height: 22px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            KAALK
+        </a>
 
-            <select class="lang-select" onchange="location.href='/set-language/' + this.value;">
+        <!-- Main Navigation Links -->
+        <div class="nav-center">
+            <a href="/">Home</a>
+            <a href="/assets">Store</a>
+            <a href="/download">Downloads</a>
+            <a href="/blog">Blog</a>
+            <a href="/pricing">{{ t('nav_pricing') }}</a>
+            <a href="/about">About Us</a>
+            <a href="/contact">Contact Us</a>
+        </div>
+
+        <!-- Accessible Click-to-Toggle Account Dropdown -->
+        <div class="account-dropdown" id="accountDropdown">
+            <button class="account-btn" id="accountDropdownBtn" type="button" aria-haspopup="true" aria-expanded="false" onclick="toggleAccountMenu(event)" title="Account & Preferences">
+                <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </button>
+            <div class="dropdown-menu" id="accountDropdownMenu">
+                {% if user %}
+                    <div class="dropdown-header">{{ user.name or user.email }}</div>
+                    <div class="dropdown-header" style="color: var(--accent); margin-top: -6px;">{{ (user.tier or 'Free')|upper }} TIER</div>
+                    <div class="dropdown-divider"></div>
+                    {% if user.is_admin %}
+                        <a href="/admin" class="dropdown-item">
+                            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            Admin Console
+                        </a>
+                        <a href="/admin/assets" class="dropdown-item">
+                            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                            Manage Assets
+                        </a>
+                    {% else %}
+                        <a href="/dashboard" class="dropdown-item">
+                            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                            {{ t('nav_dashboard') }}
+                        </a>
+                    {% endif %}
+                    <div class="dropdown-divider"></div>
+                    <a href="/logout" class="dropdown-item" style="color: var(--danger);">
+                        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                        {{ t('nav_logout') }}
+                    </a>
+                {% else %}
+                    <a href="/login" class="dropdown-item">
+                        <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+                        {{ t('nav_login') }}
+                    </a>
+                    <a href="/register" class="dropdown-item">
+                        <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                        {{ t('nav_register') }}
+                    </a>
+                {% endif %}
+
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-header">Language</div>
                 {% for l in available_languages %}
-                    <option value="{{ l.code }}" {% if l.code == locale.code %}selected{% endif %}>{{ l.name }}</option>
+                    <a href="/set-language/{{ l.code }}" class="dropdown-item" style="font-size: 0.8rem; {% if l.code == locale.code %}color: var(--accent); font-weight: bold;{% endif %}">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                        {{ l.name }}
+                    </a>
                 {% endfor %}
-            </select>
+            </div>
         </div>
     </nav>
+
     <div class="container">
         {% block content %}{% endblock %}
     </div>
+
+    <footer>
+        <p>&copy; 2026 KAALK Studio. High-performance CAD systems & cloud infrastructure. All rights reserved.</p>
+    </footer>
+
+    <script>
+        function toggleAccountMenu(event) {
+            event.stopPropagation();
+            const menu = document.getElementById('accountDropdownMenu');
+            const btn = document.getElementById('accountDropdownBtn');
+            const isOpen = menu.classList.contains('show');
+            if (isOpen) {
+                menu.classList.remove('show');
+                btn.classList.remove('active');
+            } else {
+                menu.classList.add('show');
+                btn.classList.add('active');
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('accountDropdown');
+            const menu = document.getElementById('accountDropdownMenu');
+            const btn = document.getElementById('accountDropdownBtn');
+            if (menu && menu.classList.contains('show') && !dropdown.contains(event.target)) {
+                menu.classList.remove('show');
+                btn.classList.remove('active');
+            }
+        });
+    </script>
 </body>
 </html>

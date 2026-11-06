@@ -1,0 +1,96 @@
+<!-- app/templates/assets_catalog.html -->
+{% extends "base.html" %}
+{% block title %}Asset Store - AutoCAD Tools & Plugins{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 12px;">
+    <div>
+        <h2>KAALK Asset Store</h2>
+        <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;">Browse AutoCAD plugins, dynamic blocks, hatch patterns, and LISP routines.</p>
+    </div>
+    
+    <div style="background: var(--surface-alt); padding: 8px 14px; border-radius: 4px; border: 1px solid var(--border); font-size: 0.8rem; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        Installation is performed in-app via the AutoCAD Palette (Command: <strong>KAALK</strong>)
+    </div>
+</div>
+
+<!-- Search and Filter Bar -->
+<div class="card" style="padding: 14px; margin-bottom: 20px;">
+    <form action="/assets" method="GET" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 2; min-width: 200px;">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search by tool name, command or tags..." style="margin: 0; height: 36px;">
+        </div>
+        <div style="flex: 1; min-width: 140px;">
+            <select name="type" style="margin: 0; height: 36px;">
+                <option value="all" {% if selected_type == 'all' %}selected{% endif %}>All Categories</option>
+                <option value="tool" {% if selected_type == 'tool' %}selected{% endif %}>Tools & Suites</option>
+                <option value="block" {% if selected_type == 'block' %}selected{% endif %}>Dynamic Blocks</option>
+                <option value="font" {% if selected_type == 'font' %}selected{% endif %}>Fonts</option>
+                <option value="pattern" {% if selected_type == 'pattern' %}selected{% endif %}>Patterns</option>
+            </select>
+        </div>
+        <button type="submit" class="btn" style="height: 36px; padding: 0 20px;">Search</button>
+        {% if search_query or selected_type != 'all' %}
+            <a href="/assets" class="btn" style="height: 36px; background: var(--surface-alt); padding: 0 14px;">Reset</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- App Store Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 20px;">
+    {% for a in assets %}
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 0; transition: transform 0.15s ease, border-color 0.15s ease;">
+        <div>
+            <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 12px;">
+                {% if a.thumb_url %}
+                    <img src="{{ a.thumb_url }}" alt="{{ a.name }}" width="56" height="56" style="border-radius: 6px; object-fit: cover; border: 1px solid var(--border);">
+                {% else %}
+                    <div style="width: 56px; height: 56px; background: var(--surface-alt); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--accent); font-size: 1.4rem; border: 1px solid var(--border);">
+                        K
+                    </div>
+                {% endif %}
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <h3 style="font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">{{ a.name }}</h3>
+                        {% if a.is_pro %}
+                            <span class="badge badge-pro">PRO</span>
+                        {% else %}
+                            <span class="badge badge-free">FREE</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--muted);">By {{ a.dev_name or 'KAALK Studio' }}</div>
+                    <div style="font-size: 0.75rem; color: #ffb300; margin-top: 2px;">
+                        ★ {{ "%.1f"|format(a.rating_val) }} <span style="color: var(--muted);">({{ a.rating_count }})</span>
+                    </div>
+                </div>
+            </div>
+
+            <p style="color: var(--muted); font-size: 0.85rem; line-height: 1.4; height: 40px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 12px;">
+                {{ a.short_desc or 'AutoCAD productivity extension.' }}
+            </p>
+
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 15px;">
+                <span class="badge badge-{{ a.asset_status or 'stable' }}">{{ (a.asset_status or 'stable')|upper }}</span>
+                <span class="badge badge-free">AutoCAD {{ a.min_autocad }}+</span>
+                {% if a.commands_count > 0 %}
+                    <span class="badge badge-free">{{ a.commands_count }} Commands</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 6px;">
+            <span style="font-size: 0.8rem; color: var(--muted);">{{ a.download_count }} installs</span>
+            <a href="/assets/{{ a.id }}" class="btn" style="padding: 6px 14px; font-size: 0.8rem; background: var(--surface-alt); border: 1px solid var(--border);">
+                View Details &rarr;
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not assets %}
+    <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 50px 20px; color: var(--muted);">
+        No assets found matching your criteria.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

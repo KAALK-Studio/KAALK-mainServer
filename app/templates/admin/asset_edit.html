@@ -1,175 +1,262 @@
-<!-- app/templates/admin/asset_edit.html -->
+﻿<!-- app/templates/admin/asset_edit.html -->
 {% extends "base.html" %}
 {% block title %}Edit Asset - KAALK Admin{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 760px; margin: auto;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h2>Edit Asset: {{ asset.name }}</h2>
-        <a href="/admin/assets" class="btn" style="background: var(--surface-alt);">Back to Assets</a>
+<div class="card" style="max-width: 820px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+            <h2>Edit Asset: {{ asset.name }}</h2>
+            <p style="color: var(--muted); font-size: 0.85rem;">Modify metadata, active release, commands, and media in unified order.</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <a href="/admin/assets/{{ asset.id }}/versions" class="btn" style="background: var(--surface-alt);">Manage Versions</a>
+            <a href="/admin/assets" class="btn" style="background: var(--surface-alt);">Back to Assets</a>
+        </div>
     </div>
 
     {% if success %}
-        <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 15px;">{{ success }}</div>
+        <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 16px;">{{ success }}</div>
     {% endif %}
 
     <form id="editAssetForm" action="/admin/assets/{{ asset.id }}/edit" method="POST" enctype="multipart/form-data">
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
-            <div>
-                <label>Display Name</label>
-                <input type="text" name="name" value="{{ asset.name }}" required>
-            </div>
-            <div>
-                <label>Category</label>
-                <select name="type">
-                    <option value="tool" {% if asset.type == 'tool' %}selected{% endif %}>Tool / Suite</option>
-                    <option value="block" {% if asset.type == 'block' %}selected{% endif %}>Block</option>
-                    <option value="font" {% if asset.type == 'font' %}selected{% endif %}>Font</option>
-                    <option value="pattern" {% if asset.type == 'pattern' %}selected{% endif %}>Pattern</option>
-                </select>
-            </div>
-            <div>
-                <label>Asset Status</label>
-                <select name="asset_status">
-                    <option value="stable" {% if asset.asset_status == 'stable' %}selected{% endif %}>Stable</option>
-                    <option value="beta" {% if asset.asset_status == 'beta' %}selected{% endif %}>Beta</option>
-                    <option value="rc" {% if asset.asset_status == 'rc' %}selected{% endif %}>RC</option>
-                    <option value="alpha" {% if asset.asset_status == 'alpha' %}selected{% endif %}>Alpha</option>
-                </select>
-            </div>
-        </div>
+        <div id="assetEditAccordion">
 
-        <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-            <div>
-                <label>Min AutoCAD Version</label>
-                <input type="number" name="min_autocad" value="{{ asset.min_autocad }}">
-            </div>
-        </div>
-
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
-
-        <!-- Commands & Shortcuts Repeater -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div>
-                <h3>Commands & Shortcuts</h3>
-                <p style="color: var(--muted); font-size: 0.8rem;">Define the AutoCAD commands, aliases, and lifecycle maturity status (Stable, Beta, Deprecated).</p>
-            </div>
-            <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
-        </div>
-
-        <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
-            {% for c in asset.commands_list %}
-            <div class="command-row" style="background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
-                    <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+            <!-- Section 1: Asset Identity & Classification -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">1. Identity & Classification</div>
+                        <div class="accordion-header-subtitle">Slug identifier, Name, Category, Maturity Status, AutoCAD Version, Pro Tier, Tags</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
-                    <div>
-                        <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
-                        <input type="text" class="cmd-name" value="{{ c.command }}" placeholder="XLV" required style="margin-bottom: 0;">
+                <div class="accordion-content">
+                    <label>Asset Slug (Unique Storage Path)</label>
+                    <input type="text" value="{{ asset.slug }}" readonly style="background: var(--surface); color: var(--muted); cursor: not-allowed;">
+
+                    <label>Display Name</label>
+                    <input type="text" name="name" value="{{ asset.name }}" required>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label>Category</label>
+                            <select name="type">
+                                <option value="tool" {% if asset.type == 'tool' %}selected{% endif %}>Tool / Suite</option>
+                                <option value="block" {% if asset.type == 'block' %}selected{% endif %}>Block</option>
+                                <option value="font" {% if asset.type == 'font' %}selected{% endif %}>Font</option>
+                                <option value="pattern" {% if asset.type == 'pattern' %}selected{% endif %}>Pattern</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Asset Status</label>
+                            <select name="asset_status">
+                                <option value="stable" {% if asset.asset_status == 'stable' %}selected{% endif %}>Stable</option>
+                                <option value="beta" {% if asset.asset_status == 'beta' %}selected{% endif %}>Beta</option>
+                                <option value="rc" {% if asset.asset_status == 'rc' %}selected{% endif %}>RC</option>
+                                <option value="alpha" {% if asset.asset_status == 'alpha' %}selected{% endif %}>Alpha</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Min AutoCAD Version</label>
+                            <input type="number" name="min_autocad" value="{{ asset.min_autocad }}">
+                        </div>
                     </div>
-                    <div>
-                        <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
-                        <input type="text" class="cmd-alias" value="{{ c.alias }}" placeholder="XV" style="margin-bottom: 0;">
+
+                    <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin: 12px 0;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text); font-weight: bold; margin: 0;">
+                            <input type="checkbox" name="is_pro" style="width: auto; margin: 0;" {% if asset.is_pro %}checked{% endif %}>
+                            Requires Active Pro Subscription (Uncheck to make this tool completely FREE)
+                        </label>
                     </div>
-                    <div>
-                        <label style="font-size: 0.75rem;">Status</label>
-                        <select class="cmd-status" style="margin-bottom: 0;">
-                            <option value="stable" {% if c.status == 'stable' %}selected{% endif %}>Stable</option>
-                            <option value="beta" {% if c.status == 'beta' %}selected{% endif %}>Beta (Experimental)</option>
-                            <option value="deprecated" {% if c.status == 'deprecated' %}selected{% endif %}>Deprecated</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.75rem;">Title</label>
-                        <input type="text" class="cmd-title" value="{{ c.title }}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
-                    </div>
+
+                    <label>Tags (Comma separated)</label>
+                    <input type="text" name="tags" value="{{ asset.tags or '' }}">
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            </div>
+
+            <!-- Section 2: Documentation & Copy -->
+            <div class="accordion-item">
+                <div class="accordion-header">
                     <div>
-                        <label style="font-size: 0.75rem;">Description</label>
-                        <input type="text" class="cmd-desc" value="{{ c.description }}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+                        <div class="accordion-header-title">2. Documentation & Copy</div>
+                        <div class="accordion-header-subtitle">Short description for catalog index and full Markdown instructions</div>
                     </div>
-                    <div>
-                        <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
-                        <input type="text" class="cmd-dep-notice" value="{{ c.deprecation_notice or '' }}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Short Description (Catalog Index)</label>
+                    <input type="text" name="short_desc" value="{{ asset.short_desc or '' }}" required>
+
+                    <div style="margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label style="margin-bottom: 0;">Full Documentation (Markdown Supported)</label>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" id="docWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleDocTab('write')">Write</button>
+                                <button type="button" id="docPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleDocTab('preview')">Live Preview</button>
+                            </div>
+                        </div>
+                        <textarea name="full_desc" id="fullDescInput" rows="6">{{ asset.full_desc or '' }}</textarea>
+                        <div id="fullDescPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 12px; border-radius: 4px; min-height: 140px; font-size: 0.9rem; margin-bottom: 14px;"></div>
                     </div>
                 </div>
             </div>
-            {% endfor %}
-        </div>
-        <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
 
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+            <!-- Section 3: Active Version & Release Notes -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">3. Active Version & Release Notes</div>
+                        <div class="accordion-header-subtitle">Active latest release tag (v{{ asset.latest_version or '0.1.0' }}) and release notes</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div>
+                            <span style="font-size: 0.85rem; color: var(--muted);">Active Version:</span>
+                            <span class="badge badge-pro" style="font-size: 0.9rem; margin-left: 6px;">v{{ asset.latest_version or '0.1.0' }}</span>
+                        </div>
+                        <a href="/admin/assets/{{ asset.id }}/versions/{{ asset.latest_version or '0.1.0' }}/edit" class="btn" style="font-size: 0.78rem; background: var(--surface-alt); border: 1px solid var(--border);">
+                            Edit Version Tag or Replace Specific DLL &rarr;
+                        </a>
+                    </div>
 
-        <label>Short Description (Catalog Index)</label>
-        <input type="text" name="short_desc" value="{{ asset.short_desc or '' }}" required>
-
-        <!-- Markdown Full Documentation with Live Preview -->
-        <div style="margin-top: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <label style="margin-bottom: 0;">Full Documentation (Markdown Supported)</label>
-                <div style="display: flex; gap: 6px;">
-                    <button type="button" id="docWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleDocTab('write')">Write</button>
-                    <button type="button" id="docPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleDocTab('preview')">Live Preview</button>
+                    <label>Active Version (v{{ asset.latest_version or '0.1.0' }}) Release Notes</label>
+                    <textarea name="active_release_notes" rows="4" placeholder="Explain what is included in this build...">{{ asset.active_release_notes or '' }}</textarea>
                 </div>
             </div>
-            <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 6px;">
-                Formatting tags: <code># Heading</code>, <code>**bold**</code>, <code>*italic*</code>, <code>`command`</code>, <code>- bullet item</code>, <code>> blockquote</code>
-            </div>
-            <textarea name="full_desc" id="fullDescInput" rows="6">{{ asset.full_desc or '' }}</textarea>
-            <div id="fullDescPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 12px; border-radius: 4px; min-height: 140px; font-size: 0.9rem; margin-bottom: 14px;"></div>
-        </div>
 
-        <label>Tags (Comma separated)</label>
-        <input type="text" name="tags" value="{{ asset.tags or '' }}">
-
-        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin: 15px 0;">
-            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text); font-weight: bold;">
-                <input type="checkbox" name="is_pro" style="width: auto; margin: 0;" {% if asset.is_pro %}checked{% endif %}>
-                Requires Active Pro Subscription (Uncheck to make this package completely FREE)
-            </label>
-        </div>
-
-        <div>
-            <label>Replace Square Icon (Optional - Re-generates 32x32 and 64x64 PNG formats)</label>
-            <input type="file" name="icon_file" accept="image/*">
-        </div>
-
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
-
-        <h3>Manage Tutorial Media & Screenshots</h3>
-        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Update titles, descriptions or delete existing media.</p>
-
-        <div id="existingMediaContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
-            {% for m in asset.media_items %}
-            <div class="existing-media-row" data-id="{{ m.id }}" data-url="{{ m.media_url }}" data-thumb="{{ m.thumb_url }}" data-kind="{{ m.kind }}" style="background: var(--surface-alt); padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-weight: bold; font-size: 0.85rem;">{{ m.kind|upper }}: {{ m.media_url.split('/')[-1] }}</span>
-                    <button type="button" onclick="this.closest('.existing-media-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+            <!-- Section 4: Commands & Shortcuts -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">4. Commands & Shortcuts</div>
+                        <div class="accordion-header-subtitle">AutoCAD commands, aliases, maturity status, and deprecation explanations</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
-                    <input type="text" class="media-title-input" value="{{ m.title }}" placeholder="Title" style="margin-bottom: 0;">
-                    <input type="text" class="media-desc-input" value="{{ m.description }}" placeholder="Description" style="margin-bottom: 0;">
+                <div class="accordion-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.85rem; color: var(--muted);">Active AutoCAD executable commands</span>
+                        <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
+                    </div>
+
+                    <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                        {% for c in asset.commands_list %}
+                        <div class="command-row" style="background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+                                <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
+                                <div>
+                                    <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
+                                    <input type="text" class="cmd-name" value="{{ c.command }}" placeholder="XLV" required style="margin-bottom: 0;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
+                                    <input type="text" class="cmd-alias" value="{{ c.alias }}" placeholder="XV" style="margin-bottom: 0;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Status</label>
+                                    <select class="cmd-status" style="margin-bottom: 0;">
+                                        <option value="stable" {% if c.status == 'stable' %}selected{% endif %}>Stable</option>
+                                        <option value="beta" {% if c.status == 'beta' %}selected{% endif %}>Beta</option>
+                                        <option value="deprecated" {% if c.status == 'deprecated' %}selected{% endif %}>Deprecated</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Title</label>
+                                    <input type="text" class="cmd-title" value="{{ c.title }}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <div>
+                                    <label style="font-size: 0.75rem;">Description</label>
+                                    <input type="text" class="cmd-desc" value="{{ c.description }}" placeholder="Action description..." style="margin-bottom: 0;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Deprecation Notice / Reason</label>
+                                    <input type="text" class="cmd-dep-notice" value="{{ c.deprecation_notice or '' }}" placeholder="Explain why this command is phased out..." style="margin-bottom: 0;">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
                 </div>
             </div>
-            {% endfor %}
+
+            <!-- Section 5: Package Binaries -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">5. Binary Package Files</div>
+                        <div class="accordion-header-subtitle">Hot-patch or replace active build .dll and dependencies</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 10px;">
+                        Upload a replacement .dll here if you mistakenly uploaded the wrong binary previously. Leave empty to keep existing files.
+                    </p>
+                    <label>Select Replacement .DLL & Dependencies</label>
+                    <input type="file" name="replacement_source_files" multiple accept=".dll,.dcl,.dwg" style="margin-bottom: 8px;">
+                    <label>Entry Point DLL (Required if uploading replacement files)</label>
+                    <input type="text" name="replacement_entry_point" placeholder="e.g. MyTool.dll" style="margin-bottom: 0;">
+                </div>
+            </div>
+
+            <!-- Section 6: Visual Media -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">6. Visual Assets & Media</div>
+                        <div class="accordion-header-subtitle">Replace square logo icon (32x32 / 64x64 PNG) and manage gallery</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Replace Square Icon (Re-generates 32x32 and 64x64 PNG formats)</label>
+                    <input type="file" name="icon_file" accept="image/*">
+
+                    <label style="margin-top: 14px;">Existing Screenshots & Tutorials</label>
+                    <div id="existingMediaContainer" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+                        {% for m in asset.media_items %}
+                        <div class="existing-media-row" data-id="{{ m.id }}" data-url="{{ m.media_url }}" data-thumb="{{ m.thumb_url }}" data-kind="{{ m.kind }}" style="background: var(--surface-alt); padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: bold; font-size: 0.85rem;">{{ m.kind|upper }}: {{ m.media_url.split('/')[-1] }}</span>
+                                <button type="button" onclick="this.closest('.existing-media-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                                <input type="text" class="media-title-input" value="{{ m.title }}" placeholder="Title" style="margin-bottom: 0;">
+                                <input type="text" class="media-desc-input" value="{{ m.description }}" placeholder="Description" style="margin-bottom: 0;">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="media_json_payload" id="mediaJsonPayload">
+
+                    <label>+ Add New Media Items</label>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-top: 4px;">
+                        <input type="file" id="newMediaPicker" accept="image/*,video/*" style="margin-bottom: 0;">
+                        <button type="button" class="btn" onclick="addNewMediaQueueItem()">Queue Media</button>
+                    </div>
+                    <div id="newMediaQueue" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+            </div>
+
         </div>
 
-        <input type="hidden" name="media_json_payload" id="mediaJsonPayload">
-
-        <h4>+ Add New Media Items</h4>
-        <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px;">
-            <input type="file" id="newMediaPicker" accept="image/*,video/*" style="margin-bottom: 0;">
-            <button type="button" class="btn" onclick="addNewMediaQueueItem()">Queue Media</button>
-        </div>
-        <div id="newMediaQueue" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;"></div>
-
-        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 20px; height: 36px;">Save Asset Parameters</button>
+        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 20px; height: 40px; font-size: 0.95rem;">Save Asset Parameters & Update Active Release</button>
     </form>
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    initExclusiveAccordion('#assetEditAccordion');
+});
+
 function renderMarkdownPreview(raw) {
     if (!raw) return '<em style="color: var(--muted);">No text entered.</em>';
     let html = raw
@@ -230,7 +317,7 @@ function addCommandRow(command = '', alias = '', title = '', status = 'stable', 
                 <label style="font-size: 0.75rem;">Status</label>
                 <select class="cmd-status" style="margin-bottom: 0;">
                     <option value="stable" ${status === 'stable' ? 'selected' : ''}>Stable</option>
-                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta (Experimental)</option>
+                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta</option>
                     <option value="deprecated" ${status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
                 </select>
             </div>
@@ -242,11 +329,11 @@ function addCommandRow(command = '', alias = '', title = '', status = 'stable', 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <div>
                 <label style="font-size: 0.75rem;">Description</label>
-                <input type="text" class="cmd-desc" value="${description}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+                <input type="text" class="cmd-desc" value="${description}" placeholder="Action description..." style="margin-bottom: 0;">
             </div>
             <div>
-                <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
-                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+                <label style="font-size: 0.75rem;">Deprecation Notice / Reason</label>
+                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Explain why this command is phased out..." style="margin-bottom: 0;">
             </div>
         </div>
     `;

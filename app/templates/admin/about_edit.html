@@ -1,0 +1,154 @@
+﻿<!-- app/templates/admin/about_edit.html -->
+{% extends "base.html" %}
+{% block title %}Edit About Page - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 820px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+        <div>
+            <h2>About Page Content Manager</h2>
+            <p style="color: var(--muted); font-size: 0.85rem;">Modify studio mission statement, history narrative, and core team member cards.</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <a href="/about" class="btn" style="background: var(--surface-alt);">View Page</a>
+            <a href="/admin" class="btn" style="background: var(--surface-alt);">Dashboard</a>
+        </div>
+    </div>
+
+    {% if success %}
+        <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 18px;">{{ success }}</div>
+    {% endif %}
+
+    <form id="aboutForm" action="/admin/content/about" method="POST">
+        <div id="aboutAccordion">
+
+            <!-- Section 1: Title & Mission -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">1. Studio Title & Mission Statement</div>
+                        <div class="accordion-header-subtitle">Primary title and overarching studio philosophy</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Page Title</label>
+                    <input type="text" name="title" value="{{ content.title or 'About KAALK Studio' }}" required>
+
+                    <label>Mission Statement</label>
+                    <textarea name="mission" rows="3" required placeholder="Our core mission...">{{ content.mission or '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Section 2: Narrative & Story -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">2. Origin Story & Architecture Narrative</div>
+                        <div class="accordion-header-subtitle">Detailed story of how KAALK tools and platforms were conceived</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Studio Narrative / History</label>
+                    <textarea name="story" rows="6" required placeholder="Describe the background and technical journey...">{{ content.story or '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Section 3: Core Contributors & Team -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">3. Contributors & Engineering Team</div>
+                        <div class="accordion-header-subtitle">Dynamic profile cards representing active engineers and architects</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="font-size: 0.85rem; color: var(--muted);">Team member cards shown on public About page</span>
+                        <button type="button" class="btn" onclick="addTeamMemberRow()">+ Add Member</button>
+                    </div>
+
+                    <div id="teamContainer" style="display: flex; flex-direction: column; gap: 12px;">
+                        {% for m in content.team or [] %}
+                        <div class="team-row" style="background: var(--surface-alt); padding: 12px; border: 1px solid var(--border); border-radius: 4px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Team Member Profile</span>
+                                <button type="button" onclick="this.closest('.team-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px;">
+                                <div>
+                                    <label style="font-size: 0.75rem;">Full Name</label>
+                                    <input type="text" class="member-name" value="{{ m.name }}" required style="margin-bottom: 0;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Role / Designation</label>
+                                    <input type="text" class="member-role" value="{{ m.role }}" required style="margin-bottom: 0;">
+                                </div>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.75rem;">Bio / Specialization</label>
+                                <input type="text" class="member-bio" value="{{ m.bio }}" style="margin-bottom: 0;">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="team_json_payload" id="teamJsonPayload">
+                </div>
+            </div>
+
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; height: 40px; margin-top: 20px; font-size: 0.95rem;">Save About Page Changes</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    initExclusiveAccordion('#aboutAccordion');
+});
+
+const teamContainer = document.getElementById('teamContainer');
+
+function addTeamMemberRow(name = '', role = '', bio = '') {
+    const div = document.createElement('div');
+    div.className = 'team-row';
+    div.style = 'background: var(--surface-alt); padding: 12px; border: 1px solid var(--border); border-radius: 4px;';
+    div.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Team Member Profile</span>
+            <button type="button" onclick="this.closest('.team-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 6px;">
+            <div>
+                <label style="font-size: 0.75rem;">Full Name</label>
+                <input type="text" class="member-name" value="${name}" placeholder="e.g. John Architect" required style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Role / Designation</label>
+                <input type="text" class="member-role" value="${role}" placeholder="e.g. Software Engineer" required style="margin-bottom: 0;">
+            </div>
+        </div>
+        <div>
+            <label style="font-size: 0.75rem;">Bio / Specialization</label>
+            <input type="text" class="member-bio" value="${bio}" placeholder="Specialized in computational geometry and CAD automation..." style="margin-bottom: 0;">
+        </div>
+    `;
+    teamContainer.appendChild(div);
+}
+
+document.getElementById('aboutForm').addEventListener('submit', () => {
+    const rows = document.querySelectorAll('.team-row');
+    const team = [];
+    rows.forEach(r => {
+        const name = r.querySelector('.member-name').value.trim();
+        const role = r.querySelector('.member-role').value.trim();
+        const bio = r.querySelector('.member-bio').value.trim();
+        if (name && role) {
+            team.push({ name, role, bio });
+        }
+    });
+    document.getElementById('teamJsonPayload').value = JSON.stringify(team);
+});
+</script>
+{% endblock %}

@@ -1,9 +1,12 @@
 # app/routers/store_api.py
 import json
 import datetime
+import os
 import re
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import FileResponse
+from app.config import PACKAGES_DIR
 from app.database import get_db
 from app.schemas import ReviewSubmissionRequest
 
@@ -59,7 +62,7 @@ def get_catalog(type: Optional[str] = Query(None)):
             "slug": r["slug"],
             "name": r["name"],
             "type": r["type"],
-            "version": r["latest_version"] or "1.0.0",
+            "version": r["latest_version"] or "0.1.0",
             "min_autocad": r["min_autocad"],
             "short_desc": r["short_desc"] or "",
             "thumb_url": thumb_url,
@@ -71,7 +74,7 @@ def get_catalog(type: Optional[str] = Query(None)):
         })
 
     return {
-        "catalog_version": "1.0",
+        "catalog_version": "0.1.0",
         "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
         "total_assets": len(assets),
         "assets": assets
@@ -82,16 +85,17 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
     conn = get_db()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM assets WHERE id = ?", (asset_id,))
+    cursor.execute("SELECT * FROM assets WHERE id = ? OR slug = ?", (asset_id, asset_id.lower().strip()))
     asset = cursor.fetchone()
     if not asset:
         conn.close()
         raise HTTPException(status_code=404, detail="Asset not found.")
 
+    actual_id = asset["id"]
     cursor.execute("""
     SELECT version, release_notes, download_url, file_size, sha256, commands_json, created_at
     FROM asset_versions WHERE asset_id = ? ORDER BY id DESC
-    """, (asset_id,))
+    """, (actual_id,))
     versions_rows = cursor.fetchall()
 
     version_history = []
@@ -142,10 +146,10 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
     WHERE asset_id = ? 
     ORDER BY id DESC 
     LIMIT 20
-    """, (asset_id,))
+    """, (actual_id,))
     comment_rows = cursor.fetchall()
 
-    cursor.execute("SELECT COUNT(*) as count FROM comments WHERE asset_id = ?", (asset_id,))
+    cursor.execute("SELECT COUNT(*) as count FROM comments WHERE asset_id = ?", (actual_id,))
     total_comments = cursor.fetchone()["count"]
     conn.close()
 
@@ -191,8 +195,8 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
             "download_count": asset["download_count"] or 0
         },
         "versions": {
-            "latest": asset["latest_version"] or "1.0.0",
-            "selected": selected_version_data["version"] if selected_version_data else (asset["latest_version"] or "1.0.0"),
+            "latest": asset["latest_version"] or "0.1.0",
+            "selected": selected_version_data["version"] if selected_version_data else (asset["latest_version"] or "0.1.0"),
             "available": [v["version"] for v in version_history]
         },
         "package": {
@@ -218,16 +222,46 @@ def get_asset_detail(asset_id: str, version: Optional[str] = Query(None)):
         "updated_at": asset["updated_at"]
     }
 
+@router.get("/packages/{slug}/{version}/download")
+def download_package_zip(slug: str, version: str):
+    clean_slug = slug.strip().lower()
+    clean_version = version.strip()
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    UPDATE assets 
+    SET download_count = download_count + 1, monthly_downloads = monthly_downloads + 1 
+    WHERE slug = ?
+    """, (clean_slug,))
+    conn.commit()
+    conn.close()
+
+    asset_dir = os.path.join(PACKAGES_DIR, clean_slug)
+    zip_path = os.path.join(asset_dir, f"{clean_version}.zip")
+    if not os.path.exists(zip_path):
+        zip_path = os.path.join(asset_dir, "latest.zip")
+
+    if not os.path.exists(zip_path):
+        raise HTTPException(status_code=404, detail="Requested package archive not found.")
+
+    return FileResponse(
+        path=zip_path,
+        filename=f"{clean_slug}_{clean_version}.zip",
+        media_type="application/zip"
+    )
+
 @router.post("/assets/{asset_id}/reviews", status_code=status.HTTP_201_CREATED)
 def post_asset_review(asset_id: str, payload: ReviewSubmissionRequest):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM assets WHERE id = ?", (asset_id,))
+    cursor.execute("SELECT id FROM assets WHERE id = ? OR slug = ?", (asset_id, asset_id.lower().strip()))
     asset = cursor.fetchone()
     if not asset:
         conn.close()
         raise HTTPException(status_code=404, detail="Asset not found.")
 
+    actual_id = asset["id"]
     user_id = None
     if payload.email and payload.email.strip():
         cursor.execute("SELECT id FROM users WHERE email = ?", (payload.email.strip().lower(),))
@@ -241,13 +275,13 @@ def post_asset_review(asset_id: str, payload: ReviewSubmissionRequest):
 
     existing_comment = None
     if user_id:
-        cursor.execute("SELECT id FROM comments WHERE asset_id = ? AND user_id = ?", (asset_id, user_id))
+        cursor.execute("SELECT id FROM comments WHERE asset_id = ? AND user_id = ?", (actual_id, user_id))
         existing_comment = cursor.fetchone()
     if not existing_comment and payload.email:
-        cursor.execute("SELECT id FROM comments WHERE asset_id = ? AND author = ?", (asset_id, payload.email.strip()))
+        cursor.execute("SELECT id FROM comments WHERE asset_id = ? AND author = ?", (actual_id, payload.email.strip()))
         existing_comment = cursor.fetchone()
     if not existing_comment and author_name != "You":
-        cursor.execute("SELECT id FROM comments WHERE asset_id = ? AND author = ?", (asset_id, author_name))
+        cursor.execute("SELECT id FROM comments WHERE asset_id = ? AND author = ?", (actual_id, author_name))
         existing_comment = cursor.fetchone()
 
     if existing_comment:
@@ -259,18 +293,18 @@ def post_asset_review(asset_id: str, payload: ReviewSubmissionRequest):
         cursor.execute("""
         INSERT INTO comments (asset_id, user_id, author, text, rating, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
-        """, (asset_id, user_id, author_name, payload.text.strip(), submitted_rating, now))
+        """, (actual_id, user_id, author_name, payload.text.strip(), submitted_rating, now))
 
     cursor.execute("""
     SELECT AVG(rating) as avg_rating, COUNT(rating) as count_rating 
     FROM comments 
     WHERE asset_id = ? AND rating IS NOT NULL AND rating > 0
-    """, (asset_id,))
+    """, (actual_id,))
     stats_row = cursor.fetchone()
     calc_rating = round(float(stats_row["avg_rating"]), 1) if (stats_row and stats_row["avg_rating"] is not None) else 0.0
     calc_count = int(stats_row["count_rating"]) if (stats_row and stats_row["count_rating"] is not None) else 0
 
-    cursor.execute("UPDATE assets SET rating = ?, rating_count = ? WHERE id = ?", (calc_rating, calc_count, asset_id))
+    cursor.execute("UPDATE assets SET rating = ?, rating_count = ? WHERE id = ?", (calc_rating, calc_count, actual_id))
 
     conn.commit()
     conn.close()

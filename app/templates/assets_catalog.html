@@ -1,115 +1,208 @@
-<!-- app/templates/blog_detail.html -->
+﻿<!-- app/templates/assets_catalog.html -->
 {% extends "base.html" %}
-{% block title %}{{ post.title }} - KAALK Blog{% endblock %}
+{% block title %}Asset Store - AutoCAD Tools & Plugins{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 860px; margin: auto;">
-    <div style="margin-bottom: 20px;">
-        <a href="/blog" style="color: var(--accent); text-decoration: none; font-size: 0.85rem;">&larr; Back to all articles</a>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 12px;">
+    <div>
+        <h2>KAALK Asset Store</h2>
+        <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;">Browse AutoCAD plugins, dynamic blocks, hatch patterns, and LISP routines.</p>
     </div>
-
-    {% if post.cover_image_url %}
-        <img src="{{ post.cover_image_url }}" alt="{{ post.title }}" style="width: 100%; max-height: 360px; object-fit: cover; border-radius: 6px; margin-bottom: 20px;">
-    {% endif %}
-
-    <h1 style="font-size: 2.2rem; color: var(--text); margin-bottom: 8px;">{{ post.title }}</h1>
-    <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 24px;">
-        Published {{ post.created_at_short }} by <strong>{{ post.author }}</strong>
-    </div>
-
-    <!-- Article Content -->
-    <div style="line-height: 1.8; font-size: 1rem; color: #e1e1e1; white-space: pre-line; margin-bottom: 30px;">
-        {{ post.content }}
-    </div>
-
-    <!-- Video Embed if available -->
-    {% if post.video_url %}
-        <div style="margin: 30px 0;">
-            <h3 style="margin-bottom: 10px;">Video Demonstration</h3>
-            <video controls style="width: 100%; max-height: 420px; border-radius: 6px; background: #000;">
-                <source src="{{ post.video_url }}" type="video/mp4">
-                Your browser does not support HTML5 video.
-            </video>
-        </div>
-    {% endif %}
-
-    <!-- 3D Interactive Model Viewer with Three.js -->
-    {% if post.model_3d_url %}
-        <div style="margin: 35px 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <h3>Interactive 3D Architectural Viewer</h3>
-                <span style="font-size: 0.75rem; color: var(--muted);">Click and drag to rotate | Scroll to zoom</span>
+    
+    <!-- Contextual Header Action: Direct Admin Management for Administrators, Palette Instruction for Users -->
+    <div>
+        {% if user and user.is_admin %}
+            <div style="display: flex; gap: 8px;">
+                <a href="/admin/assets" class="btn" style="background: var(--surface-alt); border: 1px solid var(--accent); color: var(--accent);">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                    Manage Assets
+                </a>
+                <a href="/admin/publish" class="btn btn-success">
+                    + Publish Asset
+                </a>
             </div>
-            <div id="three-canvas-container" style="width: 100%; height: 450px; background: #121214; border: 1px solid var(--border); border-radius: 6px; position: relative; overflow: hidden;">
-                <div id="loading-spinner" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--accent); font-size: 0.9rem;">
-                    Loading 3D Spatial Model...
+        {% else %}
+            <div style="background: var(--surface-alt); padding: 8px 14px; border-radius: 4px; border: 1px solid var(--border); font-size: 0.8rem; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Installation is performed in-app via the AutoCAD Palette (Command: <strong>KAALK</strong>)
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Search, Filter & Layout Bar -->
+<div class="card" style="padding: 14px; margin-bottom: 20px;">
+    <form action="/assets" method="GET" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 2; min-width: 200px;">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search by tool name, command or tags..." style="margin: 0; height: 36px;">
+        </div>
+        <div style="flex: 1; min-width: 140px;">
+            <select name="type" style="margin: 0; height: 36px;">
+                <option value="all" {% if selected_type == 'all' %}selected{% endif %}>All Categories</option>
+                <option value="tool" {% if selected_type == 'tool' %}selected{% endif %}>Tools & Suites</option>
+                <option value="block" {% if selected_type == 'block' %}selected{% endif %}>Dynamic Blocks</option>
+                <option value="font" {% if selected_type == 'font' %}selected{% endif %}>Fonts</option>
+                <option value="pattern" {% if selected_type == 'pattern' %}selected{% endif %}>Patterns</option>
+            </select>
+        </div>
+        <input type="hidden" name="layout" value="{{ layout }}">
+        <button type="submit" class="btn" style="height: 36px; padding: 0 20px;">Search</button>
+        {% if search_query or selected_type != 'all' %}
+            <a href="/assets?layout={{ layout }}" class="btn" style="height: 36px; background: var(--surface-alt); padding: 0 14px;">Reset</a>
+        {% endif %}
+
+        <!-- View Layout Switcher (Grid / List / Details) -->
+        <div style="display: flex; gap: 4px; margin-left: auto; border: 1px solid var(--border); border-radius: 4px; padding: 2px; background: var(--surface-alt);">
+            <a href="/assets?layout=grid{% if selected_type != 'all' %}&type={{ selected_type }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" class="btn-icon" title="Grid Layout" style="{% if layout == 'grid' %}background: var(--accent); color: #fff;{% endif %}">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            </a>
+            <a href="/assets?layout=list{% if selected_type != 'all' %}&type={{ selected_type }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" class="btn-icon" title="Compact List Layout" style="{% if layout == 'list' %}background: var(--accent); color: #fff;{% endif %}">
+                <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            </a>
+            <a href="/assets?layout=details{% if selected_type != 'all' %}&type={{ selected_type }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" class="btn-icon" title="Detailed Table Layout" style="{% if layout == 'details' %}background: var(--accent); color: #fff;{% endif %}">
+                <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Render Selected Layout Mode -->
+{% if layout == 'details' %}
+<div class="card" style="padding: 0; overflow-x: auto;">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 44px;">Icon</th>
+                <th>Tool Name</th>
+                <th>Category</th>
+                <th>Version</th>
+                <th>Compatibility</th>
+                <th>Rating</th>
+                <th>Commands</th>
+                <th>Access</th>
+                <th style="text-align: center;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in assets %}
+            <tr>
+                <td>
+                    {% if a.thumb_url %}
+                        <img src="{{ a.thumb_url }}" alt="{{ a.name }}" width="32" height="32" style="border-radius: 4px; display: block; object-fit: cover;">
+                    {% else %}
+                        <div style="width: 32px; height: 32px; background: var(--surface-alt); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--accent);">K</div>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>{{ a.name }}</strong>
+                    <div style="color: var(--muted); font-size: 0.75rem;">{{ a.short_desc[:60] }}...</div>
+                </td>
+                <td><span class="badge badge-free">{{ a.type|upper }}</span></td>
+                <td>v{{ a.latest_version or '0.1.0' }}</td>
+                <td>AutoCAD {{ a.min_autocad }}+</td>
+                <td style="color: #ffb300; font-size: 0.85rem;">★ {{ "%.1f"|format(a.rating_val) }}</td>
+                <td>{{ a.commands_count }}</td>
+                <td>
+                    {% if a.is_pro %}<span class="badge badge-pro">PRO</span>{% else %}<span class="badge badge-free">FREE</span>{% endif %}
+                </td>
+                <td style="text-align: center;">
+                    <a href="/assets/{{ a.id }}" class="btn" style="padding: 4px 10px; font-size: 0.75rem;">Details &rarr;</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% elif layout == 'list' %}
+<div style="display: flex; flex-direction: column; gap: 10px;">
+    {% for a in assets %}
+    <div class="card" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; margin-bottom: 0;">
+        <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
+            {% if a.thumb_url %}
+                <img src="{{ a.thumb_url }}" alt="{{ a.name }}" width="42" height="42" style="border-radius: 4px; object-fit: cover;">
+            {% else %}
+                <div style="width: 42px; height: 42px; background: var(--surface-alt); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--accent);">K</div>
+            {% endif %}
+            <div style="min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <h3 style="font-size: 1rem; color: var(--text);">{{ a.name }}</h3>
+                    {% if a.is_pro %}<span class="badge badge-pro">PRO</span>{% else %}<span class="badge badge-free">FREE</span>{% endif %}
+                    <span class="badge badge-{{ a.asset_status or 'stable' }}">{{ (a.asset_status or 'stable')|upper }}</span>
+                </div>
+                <div style="color: var(--muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ a.short_desc or 'AutoCAD architectural drafting tool.' }}
                 </div>
             </div>
         </div>
 
-        <!-- Three.js + GLTF Loader CDN -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
-        <script>
-            (function() {
-                const container = document.getElementById('three-canvas-container');
-                const spinner = document.getElementById('loading-spinner');
-                const modelUrl = "{{ post.model_3d_url }}";
-
-                const scene = new THREE.Scene();
-                scene.background = new THREE.Color(0x151518);
-
-                const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-                camera.position.set(0, 1.5, 3.5);
-
-                const renderer = new THREE.WebGLRenderer({ antialias: true });
-                renderer.setSize(container.clientWidth, container.clientHeight);
-                renderer.setPixelRatio(window.devicePixelRatio);
-                renderer.outputEncoding = THREE.sRGBEncoding;
-                container.appendChild(renderer.domElement);
-
-                const controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-                controls.dampingFactor = 0.05;
-
-                const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-                scene.add(ambientLight);
-
-                const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
-                dirLight.position.set(5, 10, 7);
-                scene.add(dirLight);
-
-                const loader = new THREE.GLTFLoader();
-                loader.load(modelUrl, function(gltf) {
-                    spinner.style.display = 'none';
-                    const model = gltf.scene;
-
-                    // Compute bounding box to auto-center
-                    const box = new THREE.Box3().setFromObject(model);
-                    const center = box.getCenter(new THREE.Vector3());
-                    model.position.sub(center);
-
-                    scene.add(model);
-                }, undefined, function(err) {
-                    spinner.innerText = 'Failed to load 3D model asset.';
-                    spinner.style.color = '#d13438';
-                });
-
-                function animate() {
-                    requestAnimationFrame(animate);
-                    controls.update();
-                    renderer.render(scene, camera);
-                }
-                animate();
-
-                window.addEventListener('resize', () => {
-                    camera.aspect = container.clientWidth / container.clientHeight;
-                    camera.updateProjectionMatrix();
-                    renderer.setSize(container.clientWidth, container.clientHeight);
-                });
-            })();
-        </script>
-    {% endif %}
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="text-align: right; font-size: 0.8rem; color: var(--muted);">
+                <div style="color: #ffb300;">★ {{ "%.1f"|format(a.rating_val) }}</div>
+                <div>{{ a.download_count }} installs</div>
+            </div>
+            <a href="/assets/{{ a.id }}" class="btn" style="padding: 6px 14px; font-size: 0.8rem;">View &rarr;</a>
+        </div>
+    </div>
+    {% endfor %}
 </div>
+
+{% else %}
+<!-- Default Grid View -->
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 20px;">
+    {% for a in assets %}
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 0;">
+        <div>
+            <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 12px;">
+                {% if a.thumb_url %}
+                    <img src="{{ a.thumb_url }}" alt="{{ a.name }}" width="56" height="56" style="border-radius: 6px; object-fit: cover; border: 1px solid var(--border);">
+                {% else %}
+                    <div style="width: 56px; height: 56px; background: var(--surface-alt); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--accent); font-size: 1.4rem; border: 1px solid var(--border);">
+                        K
+                    </div>
+                {% endif %}
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <h3 style="font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);">{{ a.name }}</h3>
+                        {% if a.is_pro %}
+                            <span class="badge badge-pro">PRO</span>
+                        {% else %}
+                            <span class="badge badge-free">FREE</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--muted);">By {{ a.dev_name or 'KAALK Studio' }}</div>
+                    <div style="font-size: 0.75rem; color: #ffb300; margin-top: 2px;">
+                        ★ {{ "%.1f"|format(a.rating_val) }} <span style="color: var(--muted);">({{ a.rating_count }})</span>
+                    </div>
+                </div>
+            </div>
+
+            <p style="color: var(--muted); font-size: 0.85rem; line-height: 1.4; height: 40px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin-bottom: 12px;">
+                {{ a.short_desc or 'AutoCAD productivity extension.' }}
+            </p>
+
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 15px;">
+                <span class="badge badge-{{ a.asset_status or 'stable' }}">{{ (a.asset_status or 'stable')|upper }}</span>
+                <span class="badge badge-free">AutoCAD {{ a.min_autocad }}+</span>
+                {% if a.commands_count > 0 %}
+                    <span class="badge badge-free">{{ a.commands_count }} Commands</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 6px;">
+            <span style="font-size: 0.8rem; color: var(--muted);">{{ a.download_count }} installs</span>
+            <a href="/assets/{{ a.id }}" class="btn" style="padding: 6px 14px; font-size: 0.8rem; background: var(--surface-alt); border: 1px solid var(--border);">
+                View Details &rarr;
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if not assets %}
+<div class="card" style="text-align: center; padding: 50px 20px; color: var(--muted);">
+    No assets found matching your criteria.
+</div>
+{% endif %}
 {% endblock %}

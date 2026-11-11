@@ -26,7 +26,7 @@
                 <th>File Size</th>
                 <th>SHA-256 Hash</th>
                 <th>Deployed At</th>
-                <th style="text-align: center;">Action</th>
+                <th style="text-align: center;">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -42,9 +42,12 @@
                 <td>{{ "%.2f"|format(v.file_size / 1024) }} KB</td>
                 <td style="font-family: monospace; font-size: 0.75rem;">{{ v.sha256[:16] }}...</td>
                 <td>{{ v.created_at[:10] }}</td>
-                <td style="text-align: center;">
-                    <form action="/admin/assets/{{ asset.id }}/versions/{{ v.version }}/delete" method="POST" onsubmit="return confirm('Delete this version? If this is the latest version, the system will automatically roll back to the previous stable release.');">
-                        <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;">Remove Version</button>
+                <td style="text-align: center; white-space: nowrap;">
+                    <a href="/admin/assets/{{ asset.id }}/versions/{{ v.version }}/edit" class="btn" style="padding: 4px 10px; font-size: 0.75rem; margin-right: 6px; background: var(--surface-alt); border: 1px solid var(--border);">
+                        Edit Version / Replace DLL
+                    </a>
+                    <form action="/admin/assets/{{ asset.id }}/versions/{{ v.version }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Delete this version? If this is the latest version, the system will automatically roll back to the previous stable release.');">
+                        <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;">Remove</button>
                     </form>
                 </td>
             </tr>

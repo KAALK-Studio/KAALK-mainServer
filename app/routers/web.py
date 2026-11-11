@@ -1,9 +1,12 @@
 # app/routers/web.py
 import datetime
 import json
+import os
+import re
 from typing import Optional
 from fastapi import APIRouter, Request, Form, Response, status, Query, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from app.config import STORAGE_DIR, DOWNLOADS_DIR
 from app.database import get_db
 from app.security import hash_password, verify_password, create_jwt_token, get_current_user_from_cookie
 from app.templates_config import templates
@@ -26,11 +29,12 @@ def index(request: Request):
         context={"request": request, "user": user, "content": content}
     )
 
-# ----------------- ASSET STORE -----------------
+# ----------------- ASSET STORE WITH FLEXIBLE VIEW MODES -----------------
 @router.get("/assets", response_class=HTMLResponse)
 def assets_store_catalog(request: Request,
                          type: Optional[str] = Query(None),
-                         q: Optional[str] = Query(None)):
+                         q: Optional[str] = Query(None),
+                         layout: Optional[str] = Query("grid")):
     user = get_current_user_from_cookie(request)
     conn = get_db()
     cursor = conn.cursor()
@@ -75,6 +79,8 @@ def assets_store_catalog(request: Request,
         item["commands_count"] = len([c for c in raw_cmds if isinstance(c, dict) and c.get("command")])
         assets.append(item)
 
+    current_layout = layout.lower().strip() if layout in ["grid", "list", "details"] else "grid"
+
     return templates.TemplateResponse(
         request=request,
         name="assets_catalog.html",
@@ -83,7 +89,8 @@ def assets_store_catalog(request: Request,
             "user": user,
             "assets": assets,
             "selected_type": type or "all",
-            "search_query": q or ""
+            "search_query": q or "",
+            "layout": current_layout
         }
     )
 
@@ -145,7 +152,7 @@ def asset_store_detail(request: Request, asset_id: str):
         }
     )
 
-# ----------------- DOWNLOADS -----------------
+# ----------------- DOWNLOADS (ACCURATE DOWNLOAD TRACKING) -----------------
 @router.get("/download", response_class=HTMLResponse)
 def downloads_page(request: Request):
     user = get_current_user_from_cookie(request)
@@ -171,11 +178,24 @@ def download_file_action(download_id: int):
         conn.close()
         raise HTTPException(status_code=404, detail="Download item not found.")
 
+    # Increment download counter on every hit, regardless of whether visitor is authenticated
     cursor.execute("UPDATE download_items SET download_count = download_count + 1 WHERE id = ?", (download_id,))
     conn.commit()
     conn.close()
 
     file_url = item["file_url"]
+
+    # If the file exists locally inside the static storage, stream directly via FileResponse
+    if file_url.startswith("/static/downloads/"):
+        filename = file_url.replace("/static/downloads/", "")
+        local_path = os.path.join(DOWNLOADS_DIR, filename)
+        if os.path.exists(local_path):
+            return FileResponse(
+                path=local_path,
+                filename=f"{item['title'].replace(' ', '_')}_v{item['version']}.{item['file_type']}",
+                media_type="application/octet-stream"
+            )
+
     return RedirectResponse(file_url, status_code=302)
 
 # ----------------- BLOG -----------------

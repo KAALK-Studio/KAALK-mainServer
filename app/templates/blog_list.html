@@ -1,0 +1,44 @@
+<!-- app/templates/blog_list.html -->
+{% extends "base.html" %}
+{% block title %}Architecture & Engineering Blog - KAALK{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+    <div>
+        <h2>KAALK Architectural & Technical Blog</h2>
+        <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;">Tutorials, computational design, AutoCAD API deep dives, and interactive 3D articles.</p>
+    </div>
+    {% if user and user.is_admin %}
+        <a href="/admin/blog" class="btn" style="background: var(--surface-alt);">Manage Blog</a>
+    {% endif %}
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+    {% for post in posts %}
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 0;">
+        <div>
+            {% if post.cover_image_url %}
+                <img src="{{ post.cover_image_url }}" alt="{{ post.title }}" style="width: 100%; height: 160px; object-fit: cover; border-radius: 4px; margin-bottom: 12px;">
+            {% else %}
+                <div style="width: 100%; height: 120px; background: var(--surface-alt); border-radius: 4px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; color: var(--muted);">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                </div>
+            {% endif %}
+
+            <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 6px;">{{ post.created_at_short }} &bull; By {{ post.author }}</div>
+            <h3 style="margin-bottom: 8px; color: var(--text);">{{ post.title }}</h3>
+            <p style="color: var(--muted); font-size: 0.88rem; line-height: 1.5;">{{ post.summary }}</p>
+        </div>
+
+        <div style="margin-top: 18px;">
+            <a href="/blog/{{ post.slug }}" class="btn" style="width: 100%; text-align: center;">Read Article &rarr;</a>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not posts %}
+    <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--muted);">
+        No articles published yet.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

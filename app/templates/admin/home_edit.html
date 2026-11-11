@@ -1,0 +1,142 @@
+<!-- app/templates/admin/home_edit.html -->
+{% extends "base.html" %}
+{% block title %}Edit Home Page CMS - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 820px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+        <div>
+            <h2>Home Page Content & Announcement Manager</h2>
+            <p style="color: var(--muted); font-size: 0.85rem;">Modify hero headlines, launch banners, featured product spotlight, and feature cards.</p>
+        </div>
+        <a href="/admin" class="btn" style="background: var(--surface-alt);">Dashboard</a>
+    </div>
+
+    {% if success %}
+        <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 18px;">{{ success }}</div>
+    {% endif %}
+
+    <form action="/admin/home" method="POST">
+        <div id="homeAccordion">
+            <!-- Accordion Section 1: Hero Section -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">Hero Headline & Call-To-Action</div>
+                        <div class="accordion-header-subtitle">Primary banner title, subtitle description, and download buttons</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Main Headline</label>
+                    <input type="text" name="hero_title" value="{{ content.hero_title or '' }}" required>
+
+                    <label>Hero Subtitle / Description</label>
+                    <textarea name="hero_subtitle" rows="3" required>{{ content.hero_subtitle or '' }}</textarea>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label>Download CTA Button Label</label>
+                            <input type="text" name="cta_download_text" value="{{ content.cta_download_text or 'Download Plugin Installer' }}">
+                        </div>
+                        <div>
+                            <label>Pricing CTA Button Label</label>
+                            <input type="text" name="cta_pricing_text" value="{{ content.cta_pricing_text or 'Explore Pro Plans' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accordion Section 2: Announcement Banner -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">Announcement & New Release Banner</div>
+                        <div class="accordion-header-subtitle">Top pill notification for new plugin releases or major news</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
+                        <div>
+                            <label>Badge Text</label>
+                            <input type="text" name="announcement_badge" value="{{ content.announcement_badge or 'NEW RELEASE' }}" placeholder="NEW RELEASE">
+                        </div>
+                        <div>
+                            <label>Announcement Headline</label>
+                            <input type="text" name="announcement_title" value="{{ content.announcement_title or '' }}" placeholder="KAALK Asset Manager v0.1.0 Released">
+                        </div>
+                    </div>
+
+                    <label>Announcement Brief</label>
+                    <input type="text" name="announcement_desc" value="{{ content.announcement_desc or '' }}" placeholder="Features automated PGP synchronization and Command Proxy...">
+
+                    <label>Target URL / Link</label>
+                    <input type="text" name="announcement_link" value="{{ content.announcement_link or '/download' }}" placeholder="/download or /blog/...">
+                </div>
+            </div>
+
+            <!-- Accordion Section 3: Featured Tool Showcase -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">Featured Architectural Product Showcase</div>
+                        <div class="accordion-header-subtitle">Spotlight banner for a designated drafting tool or plugin suite</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Featured Tool Title</label>
+                    <input type="text" name="featured_tool_title" value="{{ content.featured_tool_title or '' }}" placeholder="Drafting Construction Suite">
+
+                    <label>Featured Tool Summary</label>
+                    <textarea name="featured_tool_desc" rows="2" placeholder="Instant vertical and horizontal guide rays with keyboard shortcuts...">{{ content.featured_tool_desc or '' }}</textarea>
+
+                    <label>Featured Tool Destination Link</label>
+                    <input type="text" name="featured_tool_link" value="{{ content.featured_tool_link or '/assets' }}" placeholder="/assets or /assets/{asset_id}">
+                </div>
+            </div>
+
+            <!-- Accordion Section 4: Three Core Feature Columns -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">Core Feature Cards</div>
+                        <div class="accordion-header-subtitle">Three technical capability cards displayed at bottom of home landing</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px;">
+                            <label>Feature 1 Title</label>
+                            <input type="text" name="feature1_title" value="{{ content.feature1_title or '' }}">
+                            <label>Feature 1 Description</label>
+                            <textarea name="feature1_desc" rows="3">{{ content.feature1_desc or '' }}</textarea>
+                        </div>
+                        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px;">
+                            <label>Feature 2 Title</label>
+                            <input type="text" name="feature2_title" value="{{ content.feature2_title or '' }}">
+                            <label>Feature 2 Description</label>
+                            <textarea name="feature2_desc" rows="3">{{ content.feature2_desc or '' }}</textarea>
+                        </div>
+                        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px;">
+                            <label>Feature 3 Title</label>
+                            <input type="text" name="feature3_title" value="{{ content.feature3_title or '' }}">
+                            <label>Feature 3 Description</label>
+                            <textarea name="feature3_desc" rows="3">{{ content.feature3_desc or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 15px; height: 38px;">Save Home Page Changes</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    initExclusiveAccordion('#homeAccordion');
+});
+</script>
+{% endblock %}

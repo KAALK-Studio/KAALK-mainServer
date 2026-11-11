@@ -1,0 +1,24 @@
+<!-- app/templates/admin/content_edit.html -->
+{% extends "base.html" %}
+{% block title %}Edit {{ page_key|capitalize }} Content - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 760px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>Edit {{ page_key|capitalize }} Page Content</h2>
+        <a href="/admin" class="btn" style="background: var(--surface-alt);">Back to Dashboard</a>
+    </div>
+
+    {% if success %}
+        <div class="alert" style="border-left-color: var(--success); font-weight: bold;">{{ success }}</div>
+    {% endif %}
+
+    <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 12px;">
+        Modify the JSON payload below to customize text, headlines, and parameters dynamically.
+    </p>
+
+    <form action="/admin/content/{{ page_key }}" method="POST">
+        <textarea name="content_json_raw" rows="14" style="font-family: monospace; font-size: 0.85rem;" required>{{ content_json }}</textarea>
+        <button type="submit" class="btn btn-success" style="width: 100%;">Save {{ page_key|capitalize }} Changes</button>
+    </form>
+</div>
+{% endblock %}

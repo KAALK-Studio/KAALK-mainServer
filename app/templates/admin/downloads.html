@@ -1,0 +1,82 @@
+<!-- app/templates/admin/downloads.html -->
+{% extends "base.html" %}
+{% block title %}Manage Downloads - KAALK Admin{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Manage Public Installers & Downloads</h2>
+    <a href="/download" class="btn" style="background: var(--surface-alt);">View Downloads Page</a>
+</div>
+
+<div class="card">
+    <h3>+ Add New Downloadable Installer</h3>
+    <form action="/admin/downloads/create" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Package Title</label>
+                <input type="text" name="title" required placeholder="KAALK Desktop Setup for AutoCAD">
+            </div>
+            <div>
+                <label>Version</label>
+                <input type="text" name="version" required placeholder="0.3.0">
+            </div>
+            <div>
+                <label>File Type</label>
+                <select name="file_type">
+                    <option value="exe" selected>EXE (Installer)</option>
+                    <option value="msi">MSI (Enterprise Package)</option>
+                    <option value="zip">ZIP (Archive)</option>
+                </select>
+            </div>
+        </div>
+
+        <label>Description</label>
+        <input type="text" name="description" placeholder="Automated desktop installer registering Startup Suite...">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Upload Installer File (.exe, .msi, .zip)</label>
+                <input type="file" name="installer_file">
+            </div>
+            <div>
+                <label>OR Direct External URL</label>
+                <input type="url" name="direct_url" placeholder="https://github.com/...">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%;">Upload & Register Installer</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Active Installers</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Title & Version</th>
+                <th>Format</th>
+                <th>File Location / URL</th>
+                <th>Downloads</th>
+                <th style="text-align: center;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in downloads %}
+            <tr>
+                <td>
+                    <strong>{{ item.title }}</strong>
+                    <div style="font-size: 0.75rem; color: var(--muted);">v{{ item.version }}</div>
+                </td>
+                <td><span class="badge badge-free">{{ item.file_type|upper }}</span></td>
+                <td style="font-family: monospace; font-size: 0.8rem;">{{ item.file_url }}</td>
+                <td>{{ item.download_count }}</td>
+                <td style="text-align: center;">
+                    <form action="/admin/downloads/{{ item.id }}/delete" method="POST" onsubmit="return confirm('Remove download item?');">
+                        <button type="submit" class="btn btn-danger" style="padding: 4px 10px; font-size: 0.75rem;">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

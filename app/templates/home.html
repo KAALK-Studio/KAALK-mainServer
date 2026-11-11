@@ -1,0 +1,92 @@
+<!-- app/templates/home.html -->
+{% extends "base.html" %}
+{% block title %}KAALK - AutoCAD Plugin & Asset Manager{% endblock %}
+{% block content %}
+<div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+    {% if user and user.is_admin %}
+        <div style="width: 100%; display: flex; justify-content: flex-end; margin-bottom: 12px;">
+            <a href="/admin/home" class="btn" style="background: var(--surface-alt); font-size: 0.75rem; border: 1px solid var(--border);">
+                Edit Home Content
+            </a>
+        </div>
+    {% endif %}
+
+    <!-- Top Announcement or Release Pill -->
+    {% if content.announcement_title %}
+    <div style="display: inline-flex; align-items: center; gap: 10px; background: var(--surface-alt); border: 1px solid var(--accent); padding: 8px 18px; border-radius: 30px; margin-bottom: 24px; font-size: 0.85rem;">
+        {% if content.announcement_badge %}
+            <span class="badge badge-pro" style="border-radius: 20px;">{{ content.announcement_badge }}</span>
+        {% endif %}
+        <strong style="color: var(--text);">{{ content.announcement_title }}</strong>
+        {% if content.announcement_link %}
+            <a href="{{ content.announcement_link }}" style="color: var(--accent); text-decoration: none; font-weight: bold; margin-left: 6px;">Learn More &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Centered Hero Typography Block -->
+    <div style="width: 100%; max-width: 900px; text-align: center; margin-bottom: 34px;">
+        <h1 style="font-size: 2.7rem; font-weight: 800; color: #fff; margin-bottom: 16px; line-height: 1.22; letter-spacing: -0.5px;">
+            {{ content.hero_title or 'Enterprise Asset & Tool Management Inside AutoCAD' }}
+        </h1>
+        <p style="font-size: 1.15rem; color: var(--muted); line-height: 1.65; margin: 0 auto 30px auto; max-width: 820px;">
+            {{ content.hero_subtitle or 'Discover, install, update, and hot-load professional architectural tools, dynamic blocks, and AutoLISP routines without leaving your drawing canvas.' }}
+        </p>
+        <div style="display: flex; gap: 15px; justify-content: center; align-items: center; flex-wrap: wrap;">
+            <a href="/download" class="btn btn-success" style="padding: 12px 30px; font-size: 1rem;">
+                {{ content.cta_download_text or 'Download Plugin Installer' }}
+            </a>
+            <a href="/pricing" class="btn" style="padding: 12px 30px; font-size: 1rem; background: var(--surface-alt); border: 1px solid var(--border);">
+                {{ content.cta_pricing_text or 'Explore Pro Plans' }}
+            </a>
+        </div>
+    </div>
+
+    <!-- Featured Product Showcase Banner (Spans 100% of Container Width) -->
+    {% if content.featured_tool_title %}
+    <div class="card" style="width: 100%; margin-bottom: 30px; text-align: left; border-color: var(--accent); background: linear-gradient(180deg, var(--surface) 0%, var(--surface-alt) 100%); padding: 26px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <span class="badge badge-pro">FEATURED ARCHITECTURAL PRODUCT</span>
+            {% if content.featured_tool_link %}
+                <a href="{{ content.featured_tool_link }}" class="btn" style="padding: 6px 14px; font-size: 0.78rem;">Explore Asset &rarr;</a>
+            {% endif %}
+        </div>
+        <h2 style="font-size: 1.45rem; color: var(--text); margin-bottom: 8px;">{{ content.featured_tool_title }}</h2>
+        <p style="color: var(--muted); font-size: 0.95rem; line-height: 1.55;">{{ content.featured_tool_desc }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Three Core Feature Columns (Spans 100% of Container Width, aligning cleanly with Featured Card above) -->
+    <div style="width: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; text-align: left;">
+        <div class="card" style="margin-bottom: 0; padding: 24px;">
+            <div style="width: 42px; height: 42px; background: rgba(0,122,204,0.18); border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; color: var(--accent);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+            </div>
+            <h3 style="font-size: 1.15rem; color: var(--text);">{{ content.feature1_title or 'Zero AutoCAD Restarts' }}</h3>
+            <p style="color: var(--muted); font-size: 0.9rem; margin-top: 10px; line-height: 1.55;">
+                {{ content.feature1_desc or 'Integrated Command Proxy architecture loads and hot-swaps tools and commands in real time.' }}
+            </p>
+        </div>
+
+        <div class="card" style="margin-bottom: 0; padding: 24px;">
+            <div style="width: 42px; height: 42px; background: rgba(16,124,65,0.18); border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; color: var(--success);">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+            </div>
+            <h3 style="font-size: 1.15rem; color: var(--text);">{{ content.feature2_title or 'Two-Tier Catalog Manifests' }}</h3>
+            <p style="color: var(--muted); font-size: 0.9rem; margin-top: 10px; line-height: 1.55;">
+                {{ content.feature2_desc or 'Ultra-fast palette browsing with on-demand retrieval of commands, documentation, and tutorial media.' }}
+            </p>
+        </div>
+
+        <div class="card" style="margin-bottom: 0; padding: 24px;">
+            <div style="width: 42px; height: 42px; background: rgba(230,81,0,0.18); border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; color: #ff9800;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+            </div>
+            <h3 style="font-size: 1.15rem; color: var(--text);">{{ content.feature3_title or 'AutoCAD PGP Synchronization' }}</h3>
+            <p style="color: var(--muted); font-size: 0.9rem; margin-top: 10px; line-height: 1.55;">
+                {{ content.feature3_desc or 'Native alias injection into acad.pgp ensures native shortcut typing and command autocomplete.' }}
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

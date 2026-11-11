@@ -1,12 +1,12 @@
-<!-- app/templates/admin/version_deploy.html -->
+﻿<!-- app/templates/admin/version_deploy.html -->
 {% extends "base.html" %}
 {% block title %}Deploy New Version - {{ asset.name }}{% endblock %}
 {% block content %}
-<div class="card" style="max-width: 760px; margin: auto;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+<div class="card" style="max-width: 800px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <div>
-            <h2>Deploy New Version</h2>
-            <p style="color: var(--muted); font-size: 0.85rem;">Target Asset: <strong>{{ asset.name }}</strong> ({{ asset.slug }})</p>
+            <h2>Deploy New Version: {{ asset.name }}</h2>
+            <p style="color: var(--muted); font-size: 0.85rem;">Pre-populates existing commands from previous release with single-open accordion sections.</p>
         </div>
         <a href="/admin/assets/{{ asset.id }}/versions" class="btn" style="background: var(--surface-alt);">Back to Versions</a>
     </div>
@@ -16,93 +16,124 @@
     {% endif %}
 
     <form id="deployVersionForm" action="/admin/assets/{{ asset.id }}/versions/new" method="POST" enctype="multipart/form-data">
-        <label>New Version Identifier (e.g. 1.1.0)</label>
-        <input type="text" name="version" placeholder="1.1.0" required style="margin-bottom: 14px;">
+        <div id="versionDeployAccordion">
 
-        <!-- Commands & Lifecycle Status Repeater -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div>
-                <h3>Version Commands & Lifecycle Status</h3>
-                <p style="color: var(--muted); font-size: 0.8rem;">Define which commands are supported in this release, including new Beta features or Deprecations.</p>
-            </div>
-            <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
-        </div>
+            <!-- Section 1: Version Tag & Notes -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">1. Version Identifier & Release Notes</div>
+                        <div class="accordion-header-subtitle">New semantic version tag and Markdown release notes</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>New Version Identifier Tag (e.g. 0.2.0 or 1.1.0)</label>
+                    <input type="text" name="version" placeholder="0.2.0" required style="margin-bottom: 14px;">
 
-        <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
-            {% for c in asset.commands_list %}
-            <div class="command-row" style="background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
-                    <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
                     <div>
-                        <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
-                        <input type="text" class="cmd-name" value="{{ c.command }}" placeholder="XLV" required style="margin-bottom: 0;">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
-                        <input type="text" class="cmd-alias" value="{{ c.alias }}" placeholder="XV" style="margin-bottom: 0;">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.75rem;">Status</label>
-                        <select class="cmd-status" style="margin-bottom: 0;">
-                            <option value="stable" {% if c.status == 'stable' %}selected{% endif %}>Stable</option>
-                            <option value="beta" {% if c.status == 'beta' %}selected{% endif %}>Beta (Experimental)</option>
-                            <option value="deprecated" {% if c.status == 'deprecated' %}selected{% endif %}>Deprecated</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.75rem;">Title</label>
-                        <input type="text" class="cmd-title" value="{{ c.title }}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <div>
-                        <label style="font-size: 0.75rem;">Description</label>
-                        <input type="text" class="cmd-desc" value="{{ c.description }}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
-                        <input type="text" class="cmd-dep-notice" value="{{ c.deprecation_notice or '' }}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label style="margin-bottom: 0;">Release Notes (Markdown Supported)</label>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" id="relWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleRelTab('write')">Write</button>
+                                <button type="button" id="relPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleRelTab('preview')">Live Preview</button>
+                            </div>
+                        </div>
+                        <textarea name="release_notes" id="releaseNotesInput" rows="4" placeholder="- Added new features&#10;- Fixed bugs"></textarea>
+                        <div id="releaseNotesPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 10px; border-radius: 4px; min-height: 80px; font-size: 0.85rem; margin-bottom: 14px;"></div>
                     </div>
                 </div>
             </div>
-            {% endfor %}
-        </div>
-        <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
 
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+            <!-- Section 2: Commands & Shortcuts -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">2. Commands & Shortcuts</div>
+                        <div class="accordion-header-subtitle">Carried over from prior release; add new commands or deprecate existing ones</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.85rem; color: var(--muted);">AutoCAD commands supported in this release</span>
+                        <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
+                    </div>
 
-        <div style="margin-top: 6px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <label style="margin-bottom: 0;">Release Notes for Version (Markdown Supported)</label>
-                <div style="display: flex; gap: 6px;">
-                    <button type="button" id="relWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleRelTab('write')">Write</button>
-                    <button type="button" id="relPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleRelTab('preview')">Live Preview</button>
+                    <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                        {% for c in asset.commands_list %}
+                        <div class="command-row" style="background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+                                <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
+                                <div>
+                                    <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
+                                    <input type="text" class="cmd-name" value="{{ c.command }}" placeholder="XLV" required style="margin-bottom: 0;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
+                                    <input type="text" class="cmd-alias" value="{{ c.alias }}" placeholder="XV" style="margin-bottom: 0;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Status</label>
+                                    <select class="cmd-status" style="margin-bottom: 0;">
+                                        <option value="stable" {% if c.status == 'stable' %}selected{% endif %}>Stable</option>
+                                        <option value="beta" {% if c.status == 'beta' %}selected{% endif %}>Beta</option>
+                                        <option value="deprecated" {% if c.status == 'deprecated' %}selected{% endif %}>Deprecated</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Title</label>
+                                    <input type="text" class="cmd-title" value="{{ c.title }}" placeholder="Vertical Ray" style="margin-bottom: 0;">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <div>
+                                    <label style="font-size: 0.75rem;">Description</label>
+                                    <input type="text" class="cmd-desc" value="{{ c.description }}" placeholder="Action description..." style="margin-bottom: 0;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Deprecation Notice / Reason</label>
+                                    <input type="text" class="cmd-dep-notice" value="{{ c.deprecation_notice or '' }}" placeholder="Explain why this command is phased out..." style="margin-bottom: 0;">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
                 </div>
             </div>
-            <textarea name="release_notes" id="releaseNotesInput" rows="4" placeholder="- Added experimental `XLS` command (Beta)&#10;- Deprecated legacy `OLD_GUIDE`&#10;- Fixed memory leak in viewport calculations"></textarea>
-            <div id="releaseNotesPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 10px; border-radius: 4px; min-height: 80px; font-size: 0.85rem; margin-bottom: 14px;"></div>
+
+            <!-- Section 3: Package Binaries -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">3. Binary Package Files</div>
+                        <div class="accordion-header-subtitle">Upload new compiled .dll and designate Main Entry Point</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Select Compiled DLL & Supporting Files (.dll, .dcl, .dwg)</label>
+                    <input type="file" id="sourcePicker" multiple>
+                    <div id="sourcesQueue" style="margin-top: 10px;"></div>
+                    <input type="hidden" name="entry_point" id="selectedEntryPoint" required>
+                </div>
+            </div>
+
         </div>
 
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
-
-        <h3>Updated Package Source & Dependency Files</h3>
-        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select the updated executable .dll and dependency files (.dcl, .dwg) for this release.</p>
-
-        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
-            <input type="file" id="sourcePicker" multiple>
-            <div id="sourcesQueue" style="margin-top: 10px;"></div>
-        </div>
-
-        <input type="hidden" name="entry_point" id="selectedEntryPoint" required>
-
-        <button type="submit" class="btn btn-success" style="width: 100%; height: 38px; margin-top: 15px; font-size: 0.95rem;">Build & Deploy Version Archive</button>
+        <button type="submit" class="btn btn-success" style="width: 100%; height: 40px; margin-top: 20px; font-size: 0.95rem;">Build & Deploy Version Archive</button>
     </form>
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    initExclusiveAccordion('#versionDeployAccordion');
+});
+
 function renderMarkdownPreview(raw) {
     if (!raw) return '<em style="color: var(--muted);">No text entered.</em>';
     let html = raw
@@ -163,23 +194,23 @@ function addCommandRow(command = '', alias = '', title = '', status = 'stable', 
                 <label style="font-size: 0.75rem;">Status</label>
                 <select class="cmd-status" style="margin-bottom: 0;">
                     <option value="stable" ${status === 'stable' ? 'selected' : ''}>Stable</option>
-                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta (Experimental)</option>
+                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta</option>
                     <option value="deprecated" ${status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
                 </select>
             </div>
             <div>
                 <label style="font-size: 0.75rem;">Title</label>
-                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
+                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Ray" style="margin-bottom: 0;">
             </div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <div>
                 <label style="font-size: 0.75rem;">Description</label>
-                <input type="text" class="cmd-desc" value="${description}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+                <input type="text" class="cmd-desc" value="${description}" placeholder="Action description..." style="margin-bottom: 0;">
             </div>
             <div>
-                <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
-                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+                <label style="font-size: 0.75rem;">Deprecation Notice / Reason</label>
+                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Explain why this command is phased out..." style="margin-bottom: 0;">
             </div>
         </div>
     `;

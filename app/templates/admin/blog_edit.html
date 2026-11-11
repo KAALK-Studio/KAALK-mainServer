@@ -1,0 +1,70 @@
+<!-- app/templates/admin/blog_edit.html -->
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Article' if post else 'Create Article' }} - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 820px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2>{{ 'Edit Article: ' + post.title if post else 'Write New Article' }}</h2>
+        <a href="/admin/blog" class="btn" style="background: var(--surface-alt);">Back to Articles</a>
+    </div>
+
+    <form action="{{ '/admin/blog/' + post.id|string + '/edit' if post else '/admin/blog/new' }}" method="POST" enctype="multipart/form-data">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+            <div>
+                <label>Article Title</label>
+                <input type="text" name="title" value="{{ post.title if post else '' }}" required>
+            </div>
+            <div>
+                <label>Slug URL (e.g. parametric-autocad)</label>
+                <input type="text" name="slug" value="{{ post.slug if post else '' }}" required>
+            </div>
+        </div>
+
+        <label>Summary / Abstract</label>
+        <input type="text" name="summary" value="{{ post.summary if post else '' }}">
+
+        <label>Full Content (Markdown Supported)</label>
+        <textarea name="content" rows="10" required>{{ post.content if post else '' }}</textarea>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Cover Image (Upload)</label>
+                <input type="file" name="cover_file" accept="image/*">
+            </div>
+            <div>
+                <label>Video URL (Optional MP4 link)</label>
+                <input type="text" name="video_url" value="{{ post.video_url if post else '' }}">
+            </div>
+        </div>
+
+        <div style="background: var(--surface-alt); padding: 14px; border-radius: 4px; margin: 15px 0;">
+            <h4 style="color: var(--accent); margin-bottom: 6px;">Three.js 3D Model Attachment (.gltf / .glb)</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <label>Upload 3D File</label>
+                    <input type="file" name="model_file" accept=".gltf,.glb">
+                </div>
+                <div>
+                    <label>OR Direct 3D Model URL</label>
+                    <input type="text" name="model_3d_url" value="{{ post.model_3d_url if post else '' }}" placeholder="https://.../model.gltf">
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+                <label>Author</label>
+                <input type="text" name="author" value="{{ post.author if post else 'KAALK Architecture Studio' }}">
+            </div>
+            <div style="display: flex; align-items: center; padding-top: 15px;">
+                <label style="cursor: pointer;">
+                    <input type="checkbox" name="is_published" style="width: auto;" {% if not post or post.is_published %}checked{% endif %}>
+                    Publish Immediately
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 20px;">Save Article</button>
+    </form>
+</div>
+{% endblock %}

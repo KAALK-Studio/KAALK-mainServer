@@ -34,7 +34,7 @@
 
             <div style="display: flex; align-items: center; gap: 14px; font-size: 0.85rem;">
                 <span style="color: #ffb300; font-weight: bold;">
-                    ★ {{ "%.1f"|format(asset.rating_val) }}
+                     {{ "%.1f"|format(asset.rating_val) }}
                     <span style="color: var(--muted); font-weight: normal;">({{ asset.rating_count }} ratings)</span>
                 </span>
                 <span style="color: var(--muted);">&bull;</span>
@@ -158,7 +158,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <strong>{{ c.author }}</strong>
             <span style="color: #ffb300; font-size: 0.85rem;">
-                {% for i in range(c.rating or 5) %}★{% endfor %}{% for i in range(5 - (c.rating or 5)) %}☆{% endfor %}
+                {% for i in range(c.rating or 5) %}{% endfor %}{% for i in range(5 - (c.rating or 5)) %}{% endfor %}
             </span>
         </div>
         <p style="color: #ddd; font-size: 0.85rem; line-height: 1.5; margin-bottom: 6px;">{{ c.text }}</p>

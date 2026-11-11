@@ -1,153 +1,202 @@
-<!-- app/templates/admin/publish.html -->
+﻿<!-- app/templates/admin/publish.html -->
 {% extends "base.html" %}
 {% block title %}Publish Asset Package - KAALK Admin{% endblock %}
 {% block content %}
-<div class="card">
-    <h2>Publish / Update AutoCAD Asset</h2>
-    <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 16px;">
-        Deploy assets with automatic bundle packaging, xxHash32 identifier generation, multi-command suites, and Markdown documentation.
-    </p>
+<div class="card" style="max-width: 820px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+            <h2>Publish New Asset Package</h2>
+            <p style="color: var(--muted); font-size: 0.85rem;">Standardized asset creation with single-open accordion sections.</p>
+        </div>
+        <a href="/admin/assets" class="btn" style="background: var(--surface-alt);">Back to Assets</a>
+    </div>
 
     {% if success %}
         <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 16px;">{{ success }}</div>
     {% endif %}
 
     <form id="publishForm" action="/admin/publish" method="POST" enctype="multipart/form-data">
-        <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
-            <div>
-                <label>Asset Slug (Unique Storage Path, e.g. drafting-suite)</label>
-                <input type="text" name="slug" placeholder="e.g. drafting-suite" required>
-                <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 8px;">Asset ID will be automatically calculated via xxHash32 based on this slug.</small>
-            </div>
-        </div>
+        <div id="publishAccordion">
 
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px;">
-            <div>
-                <label>Display Name</label>
-                <input type="text" name="name" required>
-            </div>
-            <div>
-                <label>Category</label>
-                <select name="type">
-                    <option value="tool">Tool / Suite</option>
-                    <option value="block">Block</option>
-                    <option value="font">Font</option>
-                    <option value="pattern">Pattern</option>
-                </select>
-            </div>
-            <div>
-                <label>Asset Status</label>
-                <select name="asset_status">
-                    <option value="stable" selected>Stable</option>
-                    <option value="beta">Beta</option>
-                    <option value="rc">RC (Release Candidate)</option>
-                    <option value="alpha">Alpha</option>
-                </select>
-            </div>
-            <div>
-                <label>Version (e.g. 1.0.0)</label>
-                <input type="text" name="version" required>
-            </div>
-        </div>
+            <!-- Section 1: Asset Identity & Classification -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">1. Identity & Classification</div>
+                        <div class="accordion-header-subtitle">Slug, Name, Category, Status, Minimum AutoCAD, Pro Tier, Tags</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Asset Slug (Unique Storage Path)</label>
+                    <input type="text" name="slug" placeholder="e.g. drafting-suite" required>
+                    <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 12px;">Unique identifier. ID will be generated via xxHash32.</small>
 
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
+                    <label>Display Name</label>
+                    <input type="text" name="name" required placeholder="e.g. Drafting Construction Suite">
 
-        <!-- Commands & Shortcuts Repeater -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <div>
-                <h3>Commands & Shortcuts</h3>
-                <p style="color: var(--muted); font-size: 0.8rem;">Define the AutoCAD commands, aliases, and lifecycle maturity status (Stable, Beta, Deprecated).</p>
-            </div>
-            <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
-        </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label>Category</label>
+                            <select name="type">
+                                <option value="tool" selected>Tool / Suite</option>
+                                <option value="block">Block</option>
+                                <option value="font">Font</option>
+                                <option value="pattern">Pattern</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Asset Status</label>
+                            <select name="asset_status">
+                                <option value="stable" selected>Stable</option>
+                                <option value="beta">Beta</option>
+                                <option value="rc">RC (Release Candidate)</option>
+                                <option value="alpha">Alpha</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Min AutoCAD Version</label>
+                            <input type="number" name="min_autocad" value="2018">
+                        </div>
+                    </div>
 
-        <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;"></div>
-        <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
+                    <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin: 12px 0;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text); font-weight: bold; margin: 0;">
+                            <input type="checkbox" name="is_pro" style="width: auto; margin: 0;">
+                            Requires Active Pro Subscription (Uncheck for Free Community Tool)
+                        </label>
+                    </div>
 
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
-
-        <label>Short Description (Catalog Index)</label>
-        <input type="text" name="short_desc" required>
-
-        <!-- Markdown Full Documentation with Live Preview -->
-        <div style="margin-top: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <label style="margin-bottom: 0;">Full Documentation (Markdown Supported)</label>
-                <div style="display: flex; gap: 6px;">
-                    <button type="button" id="docWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleDocTab('write')">Write</button>
-                    <button type="button" id="docPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleDocTab('preview')">Live Preview</button>
+                    <label>Tags (Comma separated)</label>
+                    <input type="text" name="tags" placeholder="e.g. lisp, drafting, construction, lines">
                 </div>
             </div>
-            <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 6px;">
-                Formatting tags: <code># Heading</code>, <code>**bold**</code>, <code>*italic*</code>, <code>`command`</code>, <code>- bullet item</code>, <code>> blockquote</code>
-            </div>
-            <textarea name="full_desc" id="fullDescInput" rows="5" placeholder="### Overview&#10;Write comprehensive tool instructions here..."></textarea>
-            <div id="fullDescPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 12px; border-radius: 4px; min-height: 120px; font-size: 0.9rem; margin-bottom: 14px;"></div>
-        </div>
 
-        <label>Tags (Comma separated, e.g. lisp, drafting, construction, lines)</label>
-        <input type="text" name="tags" placeholder="e.g. lisp, drafting, xlines">
+            <!-- Section 2: Documentation & Copy -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">2. Documentation & Copy</div>
+                        <div class="accordion-header-subtitle">Short description for catalog index and full Markdown instructions</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Short Description (Catalog Index)</label>
+                    <input type="text" name="short_desc" required placeholder="Brief single-line summary of functionality...">
 
-        <!-- Markdown Release Notes with Live Preview -->
-        <div style="margin-top: 6px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <label style="margin-bottom: 0;">Release Notes for Version (Markdown Supported)</label>
-                <div style="display: flex; gap: 6px;">
-                    <button type="button" id="relWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleRelTab('write')">Write</button>
-                    <button type="button" id="relPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleRelTab('preview')">Live Preview</button>
+                    <div style="margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label style="margin-bottom: 0;">Full Documentation (Markdown Supported)</label>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" id="docWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleDocTab('write')">Write</button>
+                                <button type="button" id="docPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleDocTab('preview')">Live Preview</button>
+                            </div>
+                        </div>
+                        <textarea name="full_desc" id="fullDescInput" rows="5" placeholder="### Overview&#10;Write detailed instructions, parameters, and tips here..."></textarea>
+                        <div id="fullDescPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 12px; border-radius: 4px; min-height: 120px; font-size: 0.9rem; margin-bottom: 14px;"></div>
+                    </div>
                 </div>
             </div>
-            <textarea name="release_notes" id="releaseNotesInput" rows="3" placeholder="- Initial release&#10;- Added `XLV` and `XLH` construction lines"></textarea>
-            <div id="releaseNotesPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 10px; border-radius: 4px; min-height: 70px; font-size: 0.85rem; margin-bottom: 14px;"></div>
-        </div>
 
-        <div style="margin: 8px 0 16px 0;">
-            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" name="is_pro" style="width: auto; margin: 0;"> Requires Active Pro Tier
-            </label>
-        </div>
+            <!-- Section 3: Version Release & Notes -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">3. Version & Release Notes</div>
+                        <div class="accordion-header-subtitle">Initial release tag (e.g. 0.1.0) and release notes</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Initial Version Tag</label>
+                    <input type="text" name="version" value="0.1.0" required placeholder="0.1.0">
 
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
-
-        <!-- Section 1: Icon and Logo Selection -->
-        <div>
-            <h3>Asset Icon & Identity</h3>
-            <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select square PNG/JPG logo (automatically resizes into 32x32 and 64x64 formats).</p>
-            <input type="file" name="icon_file" accept="image/*">
-        </div>
-
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
-
-        <!-- Section 2: Package Source & Dependency Files -->
-        <h3>Package Source & Dependency Files</h3>
-        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Select executable .dll and dependency files (.dcl, .dwg). Designate the Main Entry Point.</p>
-
-        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
-            <input type="file" id="sourcePicker" multiple>
-            <div id="sourcesQueue" style="margin-top: 10px;"></div>
-        </div>
-
-        <input type="hidden" name="entry_point" id="selectedEntryPoint" required>
-
-        <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
-
-        <!-- Section 3: Tutorial Media & Screenshots -->
-        <h3>Tutorial Media & Screenshots (Unlimited)</h3>
-        <p style="color: var(--muted); font-size: 0.8rem; margin-bottom: 10px;">Queue visual guides, screenshots, or MP4 demo videos.</p>
-
-        <div style="background: var(--surface-alt); padding: 12px; border-radius: 4px; margin-bottom: 12px;">
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <input type="file" id="mediaPicker" accept="image/*,video/*" style="margin-bottom: 0;">
-                <button type="button" class="btn" onclick="addMediaItem()">Queue Media</button>
+                    <div style="margin-top: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label style="margin-bottom: 0;">Release Notes (Markdown Supported)</label>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" id="relWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleRelTab('write')">Write</button>
+                                <button type="button" id="relPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleRelTab('preview')">Live Preview</button>
+                            </div>
+                        </div>
+                        <textarea name="release_notes" id="releaseNotesInput" rows="3" placeholder="- Initial build release&#10;- Integrated keyboard aliases"></textarea>
+                        <div id="releaseNotesPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 10px; border-radius: 4px; min-height: 70px; font-size: 0.85rem; margin-bottom: 14px;"></div>
+                    </div>
+                </div>
             </div>
-            <div id="mediaQueue" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;"></div>
+
+            <!-- Section 4: Commands & Shortcuts -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">4. Commands & Shortcuts</div>
+                        <div class="accordion-header-subtitle">AutoCAD commands, alias triggers, lifecycle maturity status, and notices</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.85rem; color: var(--muted);">Define primary command names registered via Command Proxy</span>
+                        <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
+                    </div>
+
+                    <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;"></div>
+                    <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
+                </div>
+            </div>
+
+            <!-- Section 5: Package Binaries -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">5. Binary Package Files</div>
+                        <div class="accordion-header-subtitle">Upload executable (.dll) and designate Main Entry Point</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Select Compiled DLL & Dependency Files (.dll, .dcl, .dwg)</label>
+                    <input type="file" id="sourcePicker" multiple>
+                    <div id="sourcesQueue" style="margin-top: 10px;"></div>
+                    <input type="hidden" name="entry_point" id="selectedEntryPoint" required>
+                </div>
+            </div>
+
+            <!-- Section 6: Visual Media -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">6. Visual Assets & Media</div>
+                        <div class="accordion-header-subtitle">Square Logo Icon (32x32 / 64x64 PNG) and Screenshots Gallery</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Asset Square Icon / Logo (PNG/JPG)</label>
+                    <input type="file" name="icon_file" accept="image/*">
+
+                    <label style="margin-top: 12px;">Tutorial Media & Screenshots Gallery</label>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-top: 4px;">
+                        <input type="file" id="mediaPicker" accept="image/*,video/*" style="margin-bottom: 0;">
+                        <button type="button" class="btn" onclick="addMediaItem()">Queue Media</button>
+                    </div>
+                    <div id="mediaQueue" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+            </div>
+
         </div>
 
-        <button type="submit" class="btn btn-success" style="padding: 10px 24px; margin-top: 15px;">Build & Compile Bundle</button>
+        <button type="submit" class="btn btn-success" style="width: 100%; height: 40px; margin-top: 20px; font-size: 0.95rem;">Build & Publish Asset Package</button>
     </form>
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    initExclusiveAccordion('#publishAccordion');
+    addCommandRow();
+});
+
 function renderMarkdownPreview(raw) {
     if (!raw) return '<em style="color: var(--muted);">No text entered.</em>';
     let html = raw
@@ -228,31 +277,28 @@ function addCommandRow(command = '', alias = '', title = '', status = 'stable', 
                 <label style="font-size: 0.75rem;">Status</label>
                 <select class="cmd-status" style="margin-bottom: 0;">
                     <option value="stable" ${status === 'stable' ? 'selected' : ''}>Stable</option>
-                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta (Experimental)</option>
+                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta</option>
                     <option value="deprecated" ${status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
                 </select>
             </div>
             <div>
                 <label style="font-size: 0.75rem;">Title</label>
-                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Guide Line" style="margin-bottom: 0;">
+                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Ray" style="margin-bottom: 0;">
             </div>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <div>
                 <label style="font-size: 0.75rem;">Description</label>
-                <input type="text" class="cmd-desc" value="${description}" placeholder="Draws infinite vertical line passing through picked point" style="margin-bottom: 0;">
+                <input type="text" class="cmd-desc" value="${description}" placeholder="Description of tool action" style="margin-bottom: 0;">
             </div>
             <div>
-                <label style="font-size: 0.75rem;">Deprecation Notice (Optional)</label>
-                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Use XLV2 instead. Will be removed in v2.0" style="margin-bottom: 0;">
+                <label style="font-size: 0.75rem;">Deprecation Notice / Reason</label>
+                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Reason if status is deprecated..." style="margin-bottom: 0;">
             </div>
         </div>
     `;
     commandsContainer.appendChild(row);
 }
-
-// Add default row
-addCommandRow();
 
 const sourcePicker = document.getElementById('sourcePicker');
 const sourcesQueue = document.getElementById('sourcesQueue');
@@ -269,7 +315,7 @@ sourcePicker.addEventListener('change', () => {
 
 function renderSources() {
     sourcesQueue.innerHTML = '';
-    const executableExts = ['.dll', '.lsp', '.vlx', '.fas'];
+    const executableExts = ['.dll'];
     
     Array.from(fileStore.files).forEach((file, index) => {
         const ext = '.' + file.name.split('.').pop().toLowerCase();

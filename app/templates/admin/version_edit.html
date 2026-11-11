@@ -1,0 +1,326 @@
+﻿<!-- app/templates/admin/version_edit.html -->
+{% extends "base.html" %}
+{% block title %}Edit Version {{ version.version }} - {{ asset.name }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 800px; margin: auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+            <h2>Edit Version: {{ version.version }}</h2>
+            <p style="color: var(--muted); font-size: 0.85rem;">Target Asset: <strong>{{ asset.name }}</strong> ({{ asset.slug }})</p>
+        </div>
+        <a href="/admin/assets/{{ asset.id }}/versions" class="btn" style="background: var(--surface-alt);">Back to Versions</a>
+    </div>
+
+    {% if error %}
+        <div class="alert" style="border-left-color: var(--danger); font-weight: bold; margin-bottom: 15px;">{{ error }}</div>
+    {% endif %}
+
+    <form id="editVersionForm" action="/admin/assets/{{ asset.id }}/versions/{{ version.version }}/edit" method="POST" enctype="multipart/form-data">
+        <div id="versionEditAccordion">
+
+            <!-- Section 1: Version Tag & Notes -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">1. Version Identifier & Release Notes</div>
+                        <div class="accordion-header-subtitle">Correct or rename version tag and edit Markdown release notes</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <label>Version Identifier Tag (e.g. 0.1.0 or 1.0.0)</label>
+                    <input type="text" name="new_version" value="{{ version.version }}" required style="margin-bottom: 14px;">
+                    <small style="color: var(--muted); display: block; margin-top: -10px; margin-bottom: 14px;">
+                        If you mistyped the version number during upload, update it here. Archives and catalog references will synchronize automatically.
+                    </small>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label style="margin-bottom: 0;">Release Notes (Markdown Supported)</label>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" id="relWriteTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--accent);" onclick="toggleRelTab('write')">Write</button>
+                                <button type="button" id="relPreviewTab" class="btn" style="height: 22px; font-size: 0.75rem; background: var(--surface-alt);" onclick="toggleRelTab('preview')">Live Preview</button>
+                            </div>
+                        </div>
+                        <textarea name="release_notes" id="releaseNotesInput" rows="5" placeholder="- Release description or changelog...">{{ version.release_notes or '' }}</textarea>
+                        <div id="releaseNotesPreview" style="display: none; background: var(--surface-alt); border: 1px solid var(--border); padding: 10px; border-radius: 4px; min-height: 80px; font-size: 0.85rem; margin-bottom: 14px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Commands & Shortcuts -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">2. Commands & Shortcuts</div>
+                        <div class="accordion-header-subtitle">Update command names, aliases, status, or add plain-text deprecation explanations</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.85rem; color: var(--muted);">Active commands for this release</span>
+                        <button type="button" class="btn" onclick="addCommandRow()">+ Add Command</button>
+                    </div>
+
+                    <div id="commandsContainer" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                        {% for c in version.commands_list %}
+                        <div class="command-row" style="background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+                                <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
+                                <div>
+                                    <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
+                                    <input type="text" class="cmd-name" value="{{ c.command }}" placeholder="XLV" required style="margin-bottom: 0;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
+                                    <input type="text" class="cmd-alias" value="{{ c.alias }}" placeholder="XV" style="margin-bottom: 0;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Status</label>
+                                    <select class="cmd-status" style="margin-bottom: 0;">
+                                        <option value="stable" {% if c.status == 'stable' %}selected{% endif %}>Stable</option>
+                                        <option value="beta" {% if c.status == 'beta' %}selected{% endif %}>Beta</option>
+                                        <option value="deprecated" {% if c.status == 'deprecated' %}selected{% endif %}>Deprecated</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Title</label>
+                                    <input type="text" class="cmd-title" value="{{ c.title }}" placeholder="Vertical Ray" style="margin-bottom: 0;">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <div>
+                                    <label style="font-size: 0.75rem;">Description</label>
+                                    <input type="text" class="cmd-desc" value="{{ c.description }}" placeholder="Action description..." style="margin-bottom: 0;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem;">Deprecation Notice / Reason</label>
+                                    <input type="text" class="cmd-dep-notice" value="{{ c.deprecation_notice or '' }}" placeholder="Explain why this command is phased out..." style="margin-bottom: 0;">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="commands_json_payload" id="commandsJsonPayload">
+                </div>
+            </div>
+
+            <!-- Section 3: Package Binaries -->
+            <div class="accordion-item">
+                <div class="accordion-header">
+                    <div>
+                        <div class="accordion-header-title">3. Binary Package Files</div>
+                        <div class="accordion-header-subtitle">Replace or hot-patch compiled .dll if wrong build was uploaded</div>
+                    </div>
+                    <svg class="accordion-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div class="accordion-content">
+                    <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 12px;">
+                        If an accidental or incorrect .dll was uploaded previously, select the replacement file below to rebuild this package archive. Leave empty to keep existing files.
+                    </p>
+
+                    <div style="background: var(--surface-alt); padding: 14px; border-radius: 4px; border: 1px solid var(--border);">
+                        <div style="font-size: 0.8rem; color: var(--muted); margin-bottom: 8px;">
+                            Current file size: <strong>{{ "%.2f"|format(version.file_size / 1024) }} KB</strong> &bull; Current SHA256: <code style="color: var(--accent);">{{ version.sha256[:16] }}...</code>
+                        </div>
+
+                        <label style="font-size: 0.85rem;">Upload Replacement File(s)</label>
+                        <input type="file" id="sourcePicker" multiple style="margin-bottom: 8px;">
+                        <div id="sourcesQueue" style="margin-top: 6px;"></div>
+
+                        <label style="font-size: 0.85rem; margin-top: 8px;">Entry Point DLL (Required if uploading replacement files)</label>
+                        <input type="text" name="entry_point" id="selectedEntryPoint" placeholder="e.g. MyTool.dll" value="" style="margin-bottom: 0;">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; height: 40px; margin-top: 20px; font-size: 0.95rem;">Save Version Changes & Rebuild Package</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    initExclusiveAccordion('#versionEditAccordion');
+});
+
+function renderMarkdownPreview(raw) {
+    if (!raw) return '<em style="color: var(--muted);">No text entered.</em>';
+    let html = raw
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/^### (.*$)/gim, '<h4 style="margin: 8px 0 4px 0; color: var(--text);">$1</h4>')
+        .replace(/^## (.*$)/gim, '<h3 style="margin: 10px 0 6px 0; color: var(--text);">$1</h3>')
+        .replace(/^# (.*$)/gim, '<h2 style="margin: 12px 0 8px 0; color: var(--text);">$1</h2>')
+        .replace(/^\> (.*$)/gim, '<blockquote style="border-left: 3px solid var(--accent); padding-left: 8px; margin: 6px 0; color: var(--muted); font-style: italic;">$1</blockquote>')
+        .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+        .replace(/`([^`]+)`/gim, '<code style="background: var(--surface); padding: 2px 4px; border-radius: 3px; color: var(--accent); font-family: monospace;">$1</code>')
+        .replace(/^\- (.*$)/gim, '<li style="margin-left: 18px;">$1</li>')
+        .replace(/\n$/gim, '<br />');
+    return html;
+}
+
+function toggleRelTab(mode) {
+    const input = document.getElementById('releaseNotesInput');
+    const preview = document.getElementById('releaseNotesPreview');
+    const writeBtn = document.getElementById('relWriteTab');
+    const prevBtn = document.getElementById('relPreviewTab');
+
+    if (mode === 'preview') {
+        preview.innerHTML = renderMarkdownPreview(input.value);
+        input.style.display = 'none';
+        preview.style.display = 'block';
+        prevBtn.style.background = 'var(--accent)';
+        writeBtn.style.background = 'var(--surface-alt)';
+    } else {
+        input.style.display = 'block';
+        preview.style.display = 'none';
+        writeBtn.style.background = 'var(--accent)';
+        prevBtn.style.background = 'var(--surface-alt)';
+    }
+}
+
+const commandsContainer = document.getElementById('commandsContainer');
+
+function addCommandRow(command = '', alias = '', title = '', status = 'stable', description = '', deprecationNotice = '') {
+    const row = document.createElement('div');
+    row.className = 'command-row';
+    row.style = 'background: var(--surface-alt); padding: 10px; border: 1px solid var(--border); border-radius: 4px;';
+    row.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-weight: bold; font-size: 0.85rem; color: var(--accent);">Command Definition</span>
+            <button type="button" onclick="this.closest('.command-row').remove();" class="btn-icon" style="color: var(--danger);">✕</button>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1.5fr; gap: 8px; margin-bottom: 6px;">
+            <div>
+                <label style="font-size: 0.75rem;">Command (e.g. XLV)</label>
+                <input type="text" class="cmd-name" value="${command}" placeholder="XLV" required style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Alias (e.g. XV)</label>
+                <input type="text" class="cmd-alias" value="${alias}" placeholder="XV" style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Status</label>
+                <select class="cmd-status" style="margin-bottom: 0;">
+                    <option value="stable" ${status === 'stable' ? 'selected' : ''}>Stable</option>
+                    <option value="beta" ${status === 'beta' ? 'selected' : ''}>Beta</option>
+                    <option value="deprecated" ${status === 'deprecated' ? 'selected' : ''}>Deprecated</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Title</label>
+                <input type="text" class="cmd-title" value="${title}" placeholder="Vertical Ray" style="margin-bottom: 0;">
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+                <label style="font-size: 0.75rem;">Description</label>
+                <input type="text" class="cmd-desc" value="${description}" placeholder="Action description..." style="margin-bottom: 0;">
+            </div>
+            <div>
+                <label style="font-size: 0.75rem;">Deprecation Notice / Reason</label>
+                <input type="text" class="cmd-dep-notice" value="${deprecationNotice}" placeholder="Explain why this command is phased out..." style="margin-bottom: 0;">
+            </div>
+        </div>
+    `;
+    commandsContainer.appendChild(row);
+}
+
+const sourcePicker = document.getElementById('sourcePicker');
+const sourcesQueue = document.getElementById('sourcesQueue');
+const entryPointInput = document.getElementById('selectedEntryPoint');
+let fileStore = new DataTransfer();
+
+sourcePicker.addEventListener('change', () => {
+    for (let file of sourcePicker.files) {
+        fileStore.items.add(file);
+    }
+    renderSources();
+    sourcePicker.value = '';
+});
+
+function renderSources() {
+    sourcesQueue.innerHTML = '';
+    const executableExts = ['.dll'];
+    
+    Array.from(fileStore.files).forEach((file, index) => {
+        const ext = '.' + file.name.split('.').pop().toLowerCase();
+        const isExec = executableExts.includes(ext);
+
+        const row = document.createElement('div');
+        row.style = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px;';
+        
+        let radioHtml = isExec ? 
+            `<label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; cursor: pointer; margin: 0;">
+                <input type="radio" name="entry_choice" value="${file.name}" onchange="setEntryPoint('${file.name}')" ${entryPointInput.value === file.name || (index===0 && !entryPointInput.value) ? 'checked' : ''}>
+                Main Entry Point
+             </label>` : `<span style="font-size: 0.75rem; color: var(--muted);">Resource / Dependency</span>`;
+
+        if (isExec && (!entryPointInput.value || index === 0)) {
+            entryPointInput.value = file.name;
+        }
+
+        row.innerHTML = `
+            <div>
+                <strong>${file.name}</strong> 
+                <span style="color: var(--muted); font-size: 0.75rem; margin-left: 8px;">(${(file.size/1024).toFixed(1)} KB)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px;">
+                ${radioHtml}
+                <button type="button" onclick="removeSource(${index})" class="btn-icon" style="color: var(--danger);">✕</button>
+            </div>
+        `;
+        sourcesQueue.appendChild(row);
+    });
+}
+
+function setEntryPoint(name) {
+    entryPointInput.value = name;
+}
+
+function removeSource(index) {
+    const dt = new DataTransfer();
+    const files = Array.from(fileStore.files);
+    files.splice(index, 1);
+    files.forEach(f => dt.items.add(f));
+    fileStore = dt;
+    if (files.length === 0) entryPointInput.value = '';
+    renderSources();
+}
+
+document.getElementById('editVersionForm').addEventListener('submit', (e) => {
+    const commandRows = document.querySelectorAll('.command-row');
+    const commandsList = [];
+    commandRows.forEach(row => {
+        const cmdName = row.querySelector('.cmd-name').value.trim();
+        if (cmdName) {
+            commandsList.push({
+                command: cmdName,
+                alias: row.querySelector('.cmd-alias').value.trim(),
+                title: row.querySelector('.cmd-title').value.trim(),
+                status: row.querySelector('.cmd-status').value,
+                description: row.querySelector('.cmd-desc').value.trim(),
+                deprecation_notice: row.querySelector('.cmd-dep-notice').value.trim()
+            });
+        }
+    });
+    document.getElementById('commandsJsonPayload').value = JSON.stringify(commandsList);
+
+    if (fileStore.files.length > 0) {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.name = 'source_files';
+        fileInput.multiple = true;
+        fileInput.files = fileStore.files;
+        fileInput.style.display = 'none';
+        e.target.appendChild(fileInput);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,53 @@
+<!-- app/templates/admin/tickets.html -->
+{% extends "base.html" %}
+{% block title %}Contact Tickets - KAALK Admin{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>User Inquiries & Support Tickets</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Name & Email</th>
+                <th>Phone</th>
+                <th>Subject</th>
+                <th>Message Content</th>
+                <th>Status</th>
+                <th style="text-align: center;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tickets %}
+            <tr>
+                <td style="font-size: 0.8rem; color: var(--muted); white-space: nowrap;">{{ t.created_at[:10] }}</td>
+                <td>
+                    <strong>{{ t.name }}</strong>
+                    <div style="font-size: 0.75rem; color: var(--accent);">{{ t.email }}</div>
+                </td>
+                <td style="color: #4fc3f7;">{{ t.phone or '-' }}</td>
+                <td><strong>{{ t.subject }}</strong></td>
+                <td style="font-size: 0.85rem; max-width: 250px;">{{ t.message }}</td>
+                <td>
+                    <span class="badge {% if t.status == 'open' %}badge-pro{% else %}badge-free{% endif %}">
+                        {{ t.status|upper }}
+                    </span>
+                </td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <form action="/admin/tickets/{{ t.id }}/status" method="POST" style="display: inline;">
+                        <input type="hidden" name="status_val" value="{{ 'closed' if t.status == 'open' else 'open' }}">
+                        <button type="submit" class="btn" style="padding: 4px 8px; font-size: 0.75rem;">
+                            {{ 'Close' if t.status == 'open' else 'Reopen' }}
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not tickets %}
+            <tr>
+                <td colspan="7" style="text-align: center; color: var(--muted); padding: 25px;">No contact tickets submitted yet.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

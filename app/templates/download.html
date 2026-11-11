@@ -1,0 +1,49 @@
+<!-- app/templates/download.html -->
+{% extends "base.html" %}
+{% block title %}Downloads - KAALK Asset Manager{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+    <div>
+        <h2>Download KAALK Installers</h2>
+        <p style="color: var(--muted); font-size: 0.9rem; margin-top: 4px;">Get desktop installers, runtime dependencies, and setup packages for your AutoCAD environment.</p>
+    </div>
+    {% if user and user.is_admin %}
+        <a href="/admin/downloads" class="btn" style="background: var(--surface-alt);">Manage Downloads</a>
+    {% endif %}
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 16px;">
+    {% for item in downloads %}
+    <div class="card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; padding: 20px;">
+        <div style="flex: 1; padding-right: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                <h3 style="color: var(--accent);">{{ item.title }}</h3>
+                <span class="badge badge-pro">v{{ item.version }}</span>
+                <span class="badge badge-free">{{ item.file_type|upper }}</span>
+            </div>
+            <p style="color: var(--muted); font-size: 0.88rem; line-height: 1.5; margin-bottom: 8px;">
+                {{ item.description or 'Official build installer for AutoCAD 2018+.' }}
+            </p>
+            <div style="font-size: 0.8rem; color: var(--muted);">
+                <span>Size: {{ "%.2f"|format(item.file_size / (1024*1024)) if item.file_size > 0 else 'Variable' }} MB</span>
+                <span style="margin: 0 8px;">&bull;</span>
+                <span>Downloads: {{ item.download_count }}</span>
+            </div>
+        </div>
+
+        <div>
+            <a href="/download/{{ item.id }}/file" class="btn btn-success" style="padding: 10px 22px; font-size: 0.9rem;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Download Now
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not downloads %}
+    <div class="card" style="text-align: center; padding: 40px; color: var(--muted);">
+        No public installers deployed yet.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

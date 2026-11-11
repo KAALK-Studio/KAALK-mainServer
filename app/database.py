@@ -2,6 +2,9 @@
 import sqlite3
 import datetime
 import json
+import os
+import sys
+import getpass
 from app.config import DB_PATH
 from app.security import hash_password
 
@@ -145,7 +148,7 @@ def init_db():
     );
     """)
 
-    # 8. Blog posts table
+    # 8. Blog posts table (Zero default posts seeded)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS blog_posts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -187,15 +190,6 @@ def init_db():
     );
     """)
 
-    # Seed Admin User if missing
-    cursor.execute("SELECT id FROM users WHERE email = 'admin@kaalk.ir'")
-    if not cursor.fetchone():
-        now = datetime.datetime.utcnow().isoformat()
-        cursor.execute("""
-        INSERT INTO users (email, phone, password_hash, first_name, last_name, is_admin, is_suspended, subscription_tier, last_ip, created_at)
-        VALUES ('admin@kaalk.ir', '+989120000000', ?, 'Admin', 'KAALK', 1, 0, 'premium', '5.200.200.1', ?)
-        """, (hash_password("Admin@12345"), now))
-
     # Seed Subscription Plans if empty
     cursor.execute("SELECT COUNT(*) as count FROM subscription_plans")
     if cursor.fetchone()["count"] == 0:
@@ -227,6 +221,13 @@ def init_db():
             "hero_subtitle": "Discover, install, update, and hot-load professional architectural tools, dynamic blocks, and AutoLISP routines without leaving your drawing canvas.",
             "cta_download_text": "Download Plugin Installer",
             "cta_pricing_text": "Explore Pro Plans",
+            "announcement_badge": "NEW RELEASE",
+            "announcement_title": "KAALK Asset Manager v0.1.0 Released",
+            "announcement_desc": "Features automated PGP synchronization, live command proxy loader, and full catalog browsing.",
+            "announcement_link": "/download",
+            "featured_tool_title": "Featured Architectural Suite",
+            "featured_tool_desc": "Accelerate section generation, grid lines, and annotation workflows inside AutoCAD.",
+            "featured_tool_link": "/assets",
             "feature1_title": "Zero AutoCAD Restarts",
             "feature1_desc": "Integrated Command Proxy architecture loads and hot-swaps tools and commands in real time.",
             "feature2_title": "Two-Tier Catalog Manifests",
@@ -244,7 +245,7 @@ def init_db():
             "mission": "Bridging modern asynchronous cloud platforms with professional desktop CAD environments.",
             "story": "KAALK Asset Manager was founded by architects and CAD engineers to eradicate manual AutoLISP script deployment, broken paths, and version collisions across drafting teams.",
             "team": [
-                {"name": "Masoud Nasiri", "role": "Lead Architect & Software Engineer", "bio": "Specialized in AutoCAD .NET API development, computational design, and cloud architecture."},
+                {"name": "Lead Architect", "role": "Lead Architect & Software Engineer", "bio": "Specialized in AutoCAD .NET API development, computational design, and cloud architecture."},
                 {"name": "KAALK Core Team", "role": "CAD Tool & Content Development", "bio": "Creating high-performance architectural drafting utilities and dynamic parametric packages."}
             ]
         }
@@ -252,3 +253,109 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+    ensure_admin_account_exists()
+
+def ensure_admin_account_exists():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) as count FROM users WHERE is_admin = 1")
+    admin_count = cursor.fetchone()["count"]
+
+    if admin_count > 0:
+        conn.close()
+        return
+
+    print("=====================================================================")
+    print("[KAALK SECURITY SETUP] No administrator account found in the database.")
+    print("Please configure the initial super-admin credentials now.")
+    print("=====================================================================")
+
+    # Check for headless environment variables first
+    env_email = os.environ.get("KAALK_ADMIN_EMAIL")
+    env_password = os.environ.get("KAALK_ADMIN_PASSWORD")
+    env_first = os.environ.get("KAALK_ADMIN_FIRSTNAME", "Admin")
+    env_last = os.environ.get("KAALK_ADMIN_LASTNAME", "User")
+    env_phone = os.environ.get("KAALK_ADMIN_PHONE", "+989000000000")
+
+    if env_email and env_password:
+        admin_email = env_email.strip().lower()
+        admin_pass = env_password
+        admin_first = env_first.strip()
+        admin_last = env_last.strip()
+        admin_phone = env_phone.strip()
+        print(f"Creating super-admin from environment variables: {admin_email}")
+    else:
+        if not sys.stdin.isatty():
+            print("[ERROR] Standard input is not a terminal and no environment variables (KAALK_ADMIN_EMAIL, KAALK_ADMIN_PASSWORD) are set.")
+            conn.close()
+            return
+
+        while True:
+            try:
+                admin_email = input("Enter Admin Email: ").strip().lower()
+                if admin_email and "@" in admin_email and "." in admin_email:
+                    break
+                print("Invalid email format. Try again.")
+            except (EOFError, KeyboardInterrupt):
+                print("\nSetup cancelled.")
+                conn.close()
+                return
+
+        while True:
+            try:
+                admin_first = input("Enter Admin First Name: ").strip()
+                if admin_first:
+                    break
+                print("First name cannot be empty.")
+            except (EOFError, KeyboardInterrupt):
+                conn.close()
+                return
+
+        while True:
+            try:
+                admin_last = input("Enter Admin Last Name: ").strip()
+                if admin_last:
+                    break
+                print("Last name cannot be empty.")
+            except (EOFError, KeyboardInterrupt):
+                conn.close()
+                return
+
+        while True:
+            try:
+                admin_phone = input("Enter Admin Phone Number (+98...): ").strip()
+                if admin_phone:
+                    break
+                print("Phone number cannot be empty.")
+            except (EOFError, KeyboardInterrupt):
+                conn.close()
+                return
+
+        while True:
+            try:
+                admin_pass = getpass.getpass("Enter Admin Password (min 8 chars): ")
+                if len(admin_pass) < 8:
+                    print("Password must be at least 8 characters.")
+                    continue
+                admin_pass_confirm = getpass.getpass("Confirm Admin Password: ")
+                if admin_pass != admin_pass_confirm:
+                    print("Passwords do not match. Try again.")
+                    continue
+                break
+            except (EOFError, KeyboardInterrupt):
+                conn.close()
+                return
+
+    now = datetime.datetime.utcnow().isoformat()
+    hashed = hash_password(admin_pass)
+
+    cursor.execute("""
+    INSERT INTO users (email, phone, password_hash, first_name, last_name, is_admin, is_suspended, subscription_tier, last_ip, created_at)
+    VALUES (?, ?, ?, ?, ?, 1, 0, 'premium', '127.0.0.1', ?)
+    """, (admin_email, admin_phone, hashed, admin_first, admin_last, now))
+    conn.commit()
+    conn.close()
+
+    print("[SUCCESS] Super-admin account successfully initialized.")
+    print("=====================================================================")

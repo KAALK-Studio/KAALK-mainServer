@@ -1,0 +1,365 @@
+﻿<!-- app/templates/admin/mailbox.html -->
+{% extends "base.html" %}
+{% block title %}Mailbox & Inquiry Desk - KAALK Admin{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <h2>Mailbox & Customer Ticket Center</h2>
+        <p style="color: var(--muted); font-size: 0.85rem;">Integrated Maildir email manager and Contact Us ticket response console.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <button type="button" class="btn btn-success" onclick="openComposeModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Compose Email
+        </button>
+        <a href="/admin/mailbox?folder={{ current_folder }}" class="btn" style="background: var(--surface-alt); border: 1px solid var(--border);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            Refresh
+        </a>
+    </div>
+</div>
+
+{% if success %}
+    <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 18px;">{{ success }}</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: start;">
+    <!-- Mailbox Navigation Sidebar -->
+    <div class="card" style="padding: 14px 10px; margin-bottom: 0;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <a href="/admin/mailbox?folder=inbox" class="dropdown-item" style="border-radius: 4px; font-weight: 600; {% if current_folder == 'inbox' %}background: var(--surface-alt); color: var(--accent);{% endif %}">
+                <svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                Inbox
+                {% if unread_mail_count > 0 %}
+                    <span class="badge badge-pro" style="margin-left: auto;">{{ unread_mail_count }}</span>
+                {% endif %}
+            </a>
+
+            <a href="/admin/mailbox?folder=tickets" class="dropdown-item" style="border-radius: 4px; font-weight: 600; {% if current_folder == 'tickets' %}background: var(--surface-alt); color: var(--accent);{% endif %}">
+                <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                Contact Tickets
+                {% if open_tickets_count > 0 %}
+                    <span class="badge badge-beta" style="margin-left: auto;">{{ open_tickets_count }}</span>
+                {% endif %}
+            </a>
+
+            <a href="/admin/mailbox?folder=sent" class="dropdown-item" style="border-radius: 4px; font-weight: 600; {% if current_folder == 'sent' %}background: var(--surface-alt); color: var(--accent);{% endif %}">
+                <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                Sent Messages
+            </a>
+
+            <a href="/admin/mailbox?folder=trash" class="dropdown-item" style="border-radius: 4px; font-weight: 600; {% if current_folder == 'trash' %}background: var(--surface-alt); color: var(--accent);{% endif %}">
+                <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                Trash
+            </a>
+        </div>
+
+        {% if current_folder == 'trash' %}
+            <form action="/admin/mailbox/empty-trash" method="POST" style="margin-top: 20px; padding: 0 4px;" onsubmit="return confirm('Permanently delete all messages in Trash?');">
+                <button type="submit" class="btn btn-danger" style="width: 100%; font-size: 0.75rem; padding: 6px;">Empty Trash</button>
+            </form>
+        {% endif %}
+
+        <div style="margin-top: 25px; padding: 8px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted);">
+            <div>SMTP: {{ smtp_info }}</div>
+            <div style="margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Path: {{ maildir_display }}</div>
+        </div>
+    </div>
+
+    <!-- Message & Ticket List Area -->
+    <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 0;">
+        {% if current_folder == 'tickets' %}
+            <!-- Contact Tickets Table -->
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 130px;">Received</th>
+                        <th style="width: 180px;">Name & Contact</th>
+                        <th>Subject & Inquiry</th>
+                        <th style="width: 80px;">Status</th>
+                        <th style="text-align: center; width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tickets %}
+                    <tr style="{% if t.status == 'open' %}font-weight: bold; background: rgba(0, 122, 204, 0.05);{% endif %}">
+                        <td style="font-size: 0.8rem; color: var(--muted); white-space: nowrap;">{{ t.created_at[:16] }}</td>
+                        <td>
+                            <div>{{ t.name }}</div>
+                            <div style="font-size: 0.75rem; color: var(--accent); font-weight: normal;">{{ t.email }}</div>
+                            {% if t.phone %}
+                                <div style="font-size: 0.75rem; color: #4fc3f7; font-weight: normal;">{{ t.phone }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>{{ t.subject }}</div>
+                            <div style="font-size: 0.8rem; color: var(--muted); font-weight: normal;">{{ t.message[:120] }}...</div>
+                        </td>
+                        <td>
+                            <span class="badge {% if t.status == 'open' %}badge-beta{% else %}badge-stable{% endif %}">
+                                {{ t.status|upper }}
+                            </span>
+                        </td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <button type="button" class="btn" style="padding: 4px 8px; font-size: 0.75rem; margin-right: 4px;" onclick="openTicketModal({{ t.id }}, '{{ t.name|escape }}', '{{ t.email|escape }}', '{{ t.phone|default('', true)|escape }}', '{{ t.subject|escape }}', `{{ t.message|escape }}`)">
+                                Read / Reply
+                            </button>
+                            <form action="/admin/mailbox/ticket/{{ t.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Delete this inquiry ticket?');">
+                                <button type="submit" class="btn btn-danger" style="padding: 4px 6px; font-size: 0.75rem;">✕</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not tickets %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--muted); padding: 35px;">No customer inquiry tickets recorded.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+
+        {% else %}
+            <!-- Maildir Messages Table (Inbox, Sent, Trash) -->
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 24px; text-align: center;">•</th>
+                        <th style="width: 200px;">{{ 'Recipient' if current_folder == 'sent' else 'Sender' }}</th>
+                        <th>Subject & Snippet</th>
+                        <th style="width: 140px;">Date</th>
+                        <th style="text-align: center; width: 110px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in messages %}
+                    <tr style="{% if m.is_unread %}font-weight: bold; background: rgba(0, 122, 204, 0.06);{% endif %}">
+                        <td style="text-align: center;">
+                            {% if m.is_unread %}
+                                <div style="width: 8px; height: 8px; background: var(--accent); border-radius: 50%; margin: auto;"></div>
+                            {% endif %}
+                        </td>
+                        <td style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px;">
+                            {{ m.to if current_folder == 'sent' else m.from }}
+                        </td>
+                        <td>
+                            <a href="javascript:void(0)" onclick="viewMessage('{{ m.folder }}', '{{ m.id }}')" style="color: var(--text); text-decoration: none;">
+                                <span>{{ m.subject }}</span>
+                                <span style="color: var(--muted); font-size: 0.8rem; font-weight: normal; margin-left: 6px;">- {{ m.snippet }}</span>
+                            </a>
+                        </td>
+                        <td style="font-size: 0.8rem; color: var(--muted); white-space: nowrap;">{{ m.date }}</td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <button type="button" class="btn" style="padding: 4px 8px; font-size: 0.75rem; margin-right: 4px;" onclick="viewMessage('{{ m.folder }}', '{{ m.id }}')">
+                                View
+                            </button>
+                            <form action="/admin/mailbox/delete" method="POST" style="display: inline;" onsubmit="return confirm('{{ 'Permanently delete this email?' if current_folder == 'trash' else 'Move message to Trash?' }}');">
+                                <input type="hidden" name="folder" value="{{ m.folder }}">
+                                <input type="hidden" name="msg_id" value="{{ m.id }}">
+                                <button type="submit" class="btn btn-danger" style="padding: 4px 6px; font-size: 0.75rem;">✕</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not messages %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--muted); padding: 40px;">No messages found in {{ current_folder|capitalize }}.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: View Message Details -->
+<div id="viewModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 720px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; margin: 0; padding: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 14px;">
+            <div>
+                <h3 id="viewSubject" style="color: var(--text); font-size: 1.2rem; margin-bottom: 4px;"></h3>
+                <div style="font-size: 0.82rem; color: var(--muted);">From: <span id="viewFrom" style="color: var(--text);"></span></div>
+                <div style="font-size: 0.82rem; color: var(--muted);">To: <span id="viewTo" style="color: var(--text);"></span></div>
+                <div style="font-size: 0.78rem; color: var(--muted);" id="viewDate"></div>
+            </div>
+            <button type="button" class="btn-icon" onclick="closeViewModal()">✕</button>
+        </div>
+
+        <div id="viewBody" style="flex: 1; overflow-y: auto; line-height: 1.6; font-size: 0.95rem; white-space: pre-wrap; color: #ddd; padding: 8px 0;"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">
+            <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-success" id="btnReplyMessage" onclick="triggerReplyFromView()">Reply</button>
+                <button type="button" class="btn" style="background: var(--surface-alt); border: 1px solid var(--border);" id="btnForwardMessage" onclick="triggerForwardFromView()">Forward</button>
+            </div>
+            <form id="viewDeleteForm" action="/admin/mailbox/delete" method="POST" style="margin: 0;">
+                <input type="hidden" name="folder" id="viewDeleteFolder">
+                <input type="hidden" name="msg_id" id="viewDeleteId">
+                <button type="submit" class="btn btn-danger">Move to Trash</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Compose / Reply / Forward -->
+<div id="composeModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 550; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 680px; margin: 0; padding: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <h3 id="composeTitle">Compose New Email</h3>
+            <button type="button" class="btn-icon" onclick="closeComposeModal()">✕</button>
+        </div>
+
+        <form action="/admin/mailbox/send" method="POST">
+            <input type="hidden" name="reply_to_id" id="composeReplyToId">
+            <input type="hidden" name="ticket_id" id="composeTicketId">
+
+            <label>Recipient (To)</label>
+            <input type="email" name="to_address" id="composeTo" required placeholder="recipient@domain.com">
+
+            <label>Subject</label>
+            <input type="text" name="subject" id="composeSubject" required placeholder="Email subject">
+
+            <label>Message Content (Plain Text)</label>
+            <textarea name="body_text" id="composeBody" rows="10" required placeholder="Type your message here..."></textarea>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+                <button type="button" class="btn" style="background: var(--surface-alt);" onclick="closeComposeModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">Send Message</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Contact Ticket Viewer & Reply -->
+<div id="ticketModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 660px; margin: 0; padding: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            <div>
+                <h3 id="ticketModalSubject" style="color: var(--text);"></h3>
+                <div style="font-size: 0.82rem; color: var(--muted);">From: <span id="ticketModalFrom" style="color: var(--accent);"></span></div>
+                <div style="font-size: 0.82rem; color: #4fc3f7;">Phone: <span id="ticketModalPhone"></span></div>
+            </div>
+            <button type="button" class="btn-icon" onclick="closeTicketModal()">✕</button>
+        </div>
+
+        <div id="ticketModalMessage" style="background: var(--surface-alt); padding: 14px; border-radius: 4px; font-size: 0.92rem; line-height: 1.6; color: #ddd; margin-bottom: 16px; white-space: pre-wrap;"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <button type="button" class="btn btn-success" onclick="replyToCurrentTicket()">
+                Reply via Email
+            </button>
+            <button type="button" class="btn" style="background: var(--surface-alt);" onclick="closeTicketModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentViewData = null;
+let currentTicketData = null;
+
+function viewMessage(folder, msgId) {
+    fetch(`/admin/mailbox/view/${folder}/${msgId}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            currentViewData = data;
+            document.getElementById('viewSubject').innerText = data.subject;
+            document.getElementById('viewFrom').innerText = data.from;
+            document.getElementById('viewTo').innerText = data.to;
+            document.getElementById('viewDate').innerText = data.date;
+            document.getElementById('viewBody').innerText = data.body_text || data.body_html || '(Empty body)';
+            document.getElementById('viewDeleteFolder').value = data.folder;
+            document.getElementById('viewDeleteId').value = data.id;
+
+            document.getElementById('viewModal').style.display = 'flex';
+        })
+        .catch(err => alert('Failed to load message: ' + err));
+}
+
+function closeViewModal() {
+    document.getElementById('viewModal').style.display = 'none';
+}
+
+function openComposeModal(to = '', subject = '', body = '', replyToId = '', ticketId = '') {
+    document.getElementById('composeTo').value = to;
+    document.getElementById('composeSubject').value = subject;
+    document.getElementById('composeBody').value = body;
+    document.getElementById('composeReplyToId').value = replyToId;
+    document.getElementById('composeTicketId').value = ticketId;
+    document.getElementById('composeTitle').innerText = subject.startsWith('Re:') ? 'Reply to Message' : 'Compose Email';
+    document.getElementById('composeModal').style.display = 'flex';
+}
+
+function closeComposeModal() {
+    document.getElementById('composeModal').style.display = 'none';
+}
+
+function triggerReplyFromView() {
+    if (!currentViewData) return;
+    closeViewModal();
+    const cleanFrom = currentViewData.from.replace(/.*<([^>]+)>.*/, '$1');
+    const subj = currentViewData.subject.startsWith('Re:') ? currentViewData.subject : 'Re: ' + currentViewData.subject;
+    const quote = `\n\n--- On ${currentViewData.date}, ${currentViewData.from} wrote: ---\n> ` +
+                  currentViewData.body_text.replace(/\n/g, '\n> ');
+    openComposeModal(cleanFrom, subj, quote, currentViewData.id);
+}
+
+function triggerForwardFromView() {
+    if (!currentViewData) return;
+    closeViewModal();
+    const subj = currentViewData.subject.startsWith('Fwd:') ? currentViewData.subject : 'Fwd: ' + currentViewData.subject;
+    const body = `\n\n---------- Forwarded message ---------\nFrom: ${currentViewData.from}\nDate: ${currentViewData.date}\nSubject: ${currentViewData.subject}\nTo: ${currentViewData.to}\n\n` + currentViewData.body_text;
+    openComposeModal('', subj, body);
+}
+
+function openTicketModal(id, name, email, phone, subject, message) {
+    currentTicketData = { id, name, email, phone, subject, message };
+    document.getElementById('ticketModalSubject').innerText = subject;
+    document.getElementById('ticketModalFrom').innerText = `${name} (${email})`;
+    document.getElementById('ticketModalPhone').innerText = phone || 'N/A';
+    document.getElementById('ticketModalMessage').innerText = message;
+    document.getElementById('ticketModal').style.display = 'flex';
+}
+
+function closeTicketModal() {
+    document.getElementById('ticketModal').style.display = 'none';
+}
+
+function replyToCurrentTicket() {
+    if (!currentTicketData) return;
+    closeTicketModal();
+    const subj = currentTicketData.subject.startsWith('Re:') ? currentTicketData.subject : 'Re: ' + currentTicketData.subject;
+    const quote = `Hello ${currentTicketData.name},\n\n\n\n--- Original Inquiry ---\nDate: Just now\nSubject: ${currentTicketData.subject}\n\n` + currentTicketData.message;
+    openComposeModal(currentTicketData.email, subj, quote, '', currentTicketData.id);
+}
+
+// Background Maildir counter check every 8 seconds
+let lastKnownCount = {{ unread_mail_count }};
+setInterval(() => {
+    fetch('/admin/mailbox/api/status')
+        .then(r => r.json())
+        .then(res => {
+            if (res.unread_mail_count !== undefined) {
+                const navBadge = document.getElementById('navMailCount');
+                if (navBadge) {
+                    if (res.unread_mail_count > 0) {
+                        navBadge.innerText = res.unread_mail_count;
+                        navBadge.style.display = 'inline-block';
+                    } else {
+                        navBadge.style.display = 'none';
+                    }
+                }
+                if (res.unread_mail_count > lastKnownCount) {
+                    lastKnownCount = res.unread_mail_count;
+                    {% if current_folder == 'inbox' %}
+                        window.location.reload();
+                    {% endif %}
+                }
+            }
+        })
+        .catch(() => {});
+}, 8000);
+</script>
+{% endblock %}

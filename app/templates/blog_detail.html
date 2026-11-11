@@ -1,6 +1,6 @@
 <!-- app/templates/blog_detail.html -->
 {% extends "base.html" %}
-{% block title %}{{ post.title }} - KAALK Blog{% endblock %}
+{% block title %{{ post.title }} - KAALK Blog{% endblock %}
 {% block content %}
 <div class="card" style="max-width: 860px; margin: auto;">
     <div style="margin-bottom: 20px;">
@@ -85,6 +85,7 @@
                     spinner.style.display = 'none';
                     const model = gltf.scene;
 
+                    // Compute bounding box to auto-center
                     const box = new THREE.Box3().setFromObject(model);
                     const center = box.getCenter(new THREE.Vector3());
                     model.position.sub(center);

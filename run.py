@@ -3,15 +3,15 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from app.config import STORAGE_DIR
+from app.config import STORAGE_DIR, APP_VERSION
 from app.database import init_db
 from app.routers import auth_api, store_api, web, admin
 
-# Initialize database tables on boot
+# Initialize database tables and prompt for super-admin credentials if first run
 init_db()
 
 # Initialize FastAPI application instance
-app = FastAPI(title="KAALK Platform Service", version="0.5.1")
+app = FastAPI(title="KAALK Platform Service", version=APP_VERSION)
 
 # Mount storage directory for direct binary package downloads and media
 app.mount("/static", StaticFiles(directory=STORAGE_DIR), name="static")
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "run:app",
         host="127.0.0.1",
-        port=8080,
+        port=8000,
         reload=True,
         proxy_headers=True,
         forwarded_allow_ips="*"

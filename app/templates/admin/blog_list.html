@@ -1,0 +1,54 @@
+<!-- app/templates/admin/blog_list.html -->
+{% extends "base.html" %}
+{% block title %}Manage Blog - KAALK Admin{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Manage Blog Articles</h2>
+    <a href="/admin/blog/new" class="btn btn-success">+ Write New Article</a>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Title & Slug</th>
+                <th>Author</th>
+                <th>3D Model Attached?</th>
+                <th>Status</th>
+                <th>Created At</th>
+                <th style="text-align: center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for post in posts %}
+            <tr>
+                <td>
+                    <strong>{{ post.title }}</strong>
+                    <div style="font-size: 0.75rem; color: var(--muted);">/blog/{{ post.slug }}</div>
+                </td>
+                <td>{{ post.author }}</td>
+                <td>
+                    {% if post.model_3d_url %}
+                        <span class="badge badge-pro">GLTF / 3D</span>
+                    {% else %}
+                        <span style="color: var(--muted); font-size: 0.8rem;">None</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge {% if post.is_published %}badge-pro{% else %}badge-free{% endif %}">
+                        {{ 'PUBLISHED' if post.is_published else 'DRAFT' }}
+                    </span>
+                </td>
+                <td>{{ post.created_at[:10] }}</td>
+                <td style="text-align: center;">
+                    <a href="/admin/blog/{{ post.id }}/edit" class="btn" style="padding: 4px 8px; font-size: 0.75rem;">Edit</a>
+                    <form action="/admin/blog/{{ post.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Delete article?');">
+                        <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 0.75rem;">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

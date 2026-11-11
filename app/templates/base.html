@@ -72,11 +72,10 @@
             font-weight: 500;
             transition: color 0.15s ease;
         }
-        nav .nav-center a:hover { 
+        nav .nav-center a:hover, nav .nav-center a.active-link { 
             color: var(--accent); 
         }
 
-        /* Click-to-Toggle Account Dropdown */
         .account-dropdown {
             position: relative;
             display: inline-block;
@@ -192,6 +191,64 @@
             stroke-linejoin: round;
         }
 
+        /* Shared Single-Open Accordion Components */
+        .accordion-item {
+            border: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: 6px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            transition: border-color 0.2s ease;
+        }
+        .accordion-item.active {
+            border-color: var(--accent);
+        }
+        .accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            background: var(--surface-alt);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s ease;
+        }
+        .accordion-header:hover {
+            background: rgba(0, 122, 204, 0.12);
+        }
+        .accordion-header-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .accordion-header-subtitle {
+            font-size: 0.78rem;
+            color: var(--muted);
+            margin-top: 2px;
+            font-weight: normal;
+        }
+        .accordion-chevron {
+            width: 16px;
+            height: 16px;
+            stroke: var(--muted);
+            fill: none;
+            stroke-width: 2.2;
+            transition: transform 0.25s ease, stroke 0.2s ease;
+        }
+        .accordion-item.active .accordion-chevron {
+            transform: rotate(180deg);
+            stroke: var(--accent);
+        }
+        .accordion-content {
+            padding: 20px 18px;
+            border-top: 1px solid var(--border);
+            display: none;
+            background: var(--surface);
+        }
+
         input, select, textarea { width: 100%; background: var(--surface-alt); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 4px; margin-top: 6px; margin-bottom: 14px; font-size: 0.9rem; }
         label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
@@ -230,10 +287,18 @@
             <a href="/blog">Blog</a>
             <a href="/pricing">{{ t('nav_pricing') }}</a>
             <a href="/about">About Us</a>
-            <a href="/contact">Contact Us</a>
+            {% if user and user.is_admin %}
+                <a href="/admin/mailbox" style="display: inline-flex; align-items: center; gap: 6px;">
+                    Mailbox
+                    <span id="navMailCount" class="badge badge-pro" style="display: none; padding: 2px 6px; font-size: 0.72rem;">0</span>
+                </a>
+                <a href="/admin" style="color: var(--accent); font-weight: bold;">Dashboard</a>
+            {% else %}
+                <a href="/contact">Contact Us</a>
+            {% endif %}
         </div>
 
-        <!-- Accessible Click-to-Toggle Account Dropdown -->
+        <!-- Account Controls & Language Selector -->
         <div class="account-dropdown" id="accountDropdown">
             <button class="account-btn" id="accountDropdownBtn" type="button" aria-haspopup="true" aria-expanded="false" onclick="toggleAccountMenu(event)" title="Account & Preferences">
                 <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -246,11 +311,15 @@
                     {% if user.is_admin %}
                         <a href="/admin" class="dropdown-item">
                             <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                            Admin Console
+                            Admin Dashboard
                         </a>
                         <a href="/admin/assets" class="dropdown-item">
                             <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
                             Manage Assets
+                        </a>
+                        <a href="/admin/mailbox" class="dropdown-item">
+                            <svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+                            Mailbox & Tickets
                         </a>
                     {% else %}
                         <a href="/dashboard" class="dropdown-item">
@@ -318,6 +387,61 @@
                 btn.classList.remove('active');
             }
         });
+
+        // Global Exclusive Accordion Handler (one panel open at a time)
+        function initExclusiveAccordion(containerSelector) {
+            const container = document.querySelector(containerSelector);
+            if (!container) return;
+            const items = container.querySelectorAll('.accordion-item');
+
+            items.forEach((item, index) => {
+                const header = item.querySelector('.accordion-header');
+                const content = item.querySelector('.accordion-content');
+
+                if (index === 0) {
+                    item.classList.add('active');
+                    content.style.display = 'block';
+                } else {
+                    item.classList.remove('active');
+                    content.style.display = 'none';
+                }
+
+                header.addEventListener('click', () => {
+                    const isAlreadyActive = item.classList.contains('active');
+                    items.forEach(other => {
+                        other.classList.remove('active');
+                        other.querySelector('.accordion-content').style.display = 'none';
+                    });
+                    if (!isAlreadyActive) {
+                        item.classList.add('active');
+                        content.style.display = 'block';
+                    }
+                });
+            });
+        }
+
+        // Global Unread Mail Check for Administrators
+        {% if user and user.is_admin %}
+        function checkUnreadMailStatus() {
+            fetch('/admin/mailbox/api/status')
+                .then(r => r.json())
+                .then(data => {
+                    const badge = document.getElementById('navMailCount');
+                    if (badge) {
+                        const total = (data.unread_mail_count || 0) + (data.open_tickets_count || 0);
+                        if (total > 0) {
+                            badge.innerText = total;
+                            badge.style.display = 'inline-block';
+                        } else {
+                            badge.style.display = 'none';
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
+        checkUnreadMailStatus();
+        setInterval(checkUnreadMailStatus, 10000);
+        {% endif %}
     </script>
 </body>
 </html>

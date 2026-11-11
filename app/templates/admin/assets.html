@@ -1,16 +1,30 @@
+﻿<!-- app/templates/admin/assets.html -->
 {% extends "base.html" %}
 {% block title %}Manage Assets - KAALK Admin{% endblock %}
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <h2>Asset Management</h2>
-    <a href="/admin/publish" class="btn btn-success">+ Publish New Asset</a>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+    <div>
+        <h2>Asset Management</h2>
+        <p style="color: var(--muted); font-size: 0.85rem;">Manage, export, and import complete asset packages with all version archives.</p>
+    </div>
+    <div style="display: flex; gap: 8px;">
+        <button type="button" class="btn" onclick="openImportModal()" style="background: var(--surface-alt); border: 1px solid var(--border);">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Import Bundle (.zip)
+        </button>
+        <a href="/admin/publish" class="btn btn-success">+ Publish New Asset</a>
+    </div>
 </div>
 
-<div class="card">
+{% if success %}
+    <div class="alert" style="border-left-color: var(--success); font-weight: bold; margin-bottom: 18px;">{{ success }}</div>
+{% endif %}
+
+<div class="card" style="padding: 0; overflow-x: auto;">
     <table>
         <thead>
             <tr>
-                <th>Icon</th>
+                <th style="width: 48px;">Icon</th>
                 <th>Name & ID</th>
                 <th>Type</th>
                 <th>Status</th>
@@ -25,20 +39,20 @@
             <tr>
                 <td style="width: 48px;">
                     {% if a.thumb_32_url %}
-                        <img src="{{ a.thumb_32_url }}" width="32" height="32" style="border-radius: 4px; display: block;">
+                        <img src="{{ a.thumb_32_url }}" width="32" height="32" style="border-radius: 4px; display: block; object-fit: cover;">
                     {% else %}
-                        <div style="width: 32px; height: 32px; background: var(--surface-alt); border-radius: 4px;"></div>
+                        <div style="width: 32px; height: 32px; background: var(--surface-alt); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--accent);">K</div>
                     {% endif %}
                 </td>
                 <td>
                     <strong>{{ a.name }}</strong>
-                    <div style="color: var(--muted); font-size: 0.75rem;">{{ a.id }}</div>
+                    <div style="color: var(--muted); font-size: 0.75rem;">{{ a.id }} ({{ a.slug }})</div>
                 </td>
-                <td>{{ a.type }}</td>
+                <td><span class="badge badge-free">{{ a.type|upper }}</span></td>
                 <td>
                     <span class="badge badge-{{ a.asset_status or 'stable' }}">{{ (a.asset_status or 'stable')|upper }}</span>
                 </td>
-                <td>{{ a.latest_version or 'None' }}</td>
+                <td>v{{ a.latest_version or 'None' }}</td>
                 <td>{{ a.version_count }}</td>
                 <td>
                     {% if a.is_pro %}
@@ -48,13 +62,18 @@
                     {% endif %}
                 </td>
                 <td style="text-align: center; white-space: nowrap;">
-                    <!-- Stroke-only pencil outline pointing top-right to bottom-left -->
+                    <!-- Export Asset Bundle Link -->
+                    <a href="/admin/assets/{{ a.id }}/export" class="btn-icon" title="Export Complete Asset Bundle (.zip)" style="color: var(--success); margin-right: 4px;">
+                        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    </a>
+                    <!-- Edit Asset Link -->
                     <a href="/admin/assets/{{ a.id }}/edit" class="btn-icon" title="Edit Asset Info" style="color: var(--accent); margin-right: 4px;">
                         <svg viewBox="0 0 24 24"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                     </a>
-                    <a href="/admin/assets/{{ a.id }}/versions" class="btn" style="font-size: 0.75rem; margin-right: 4px;">Versions</a>
-                    <!-- Stroke-only trashcan outline -->
-                    <form action="/admin/assets/{{ a.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Permanently delete asset and files?');">
+                    <!-- Versions Manager Link -->
+                    <a href="/admin/assets/{{ a.id }}/versions" class="btn" style="font-size: 0.75rem; padding: 4px 8px; margin-right: 4px;">Versions</a>
+                    <!-- Delete Asset -->
+                    <form action="/admin/assets/{{ a.id }}/delete" method="POST" style="display: inline;" onsubmit="return confirm('Permanently delete asset and all associated versions/files?');">
                         <button type="submit" class="btn-icon" title="Delete Asset" style="color: var(--danger);">
                             <svg viewBox="0 0 24 24">
                                 <polyline points="3 6 5 6 21 6"/>
@@ -67,7 +86,45 @@
                 </td>
             </tr>
             {% endfor %}
+            {% if not assets %}
+            <tr>
+                <td colspan="8" style="text-align: center; color: var(--muted); padding: 30px;">No assets available. Click '+ Publish New Asset' or 'Import Bundle' above.</td>
+            </tr>
+            {% endif %}
         </tbody>
     </table>
 </div>
+
+<!-- Modal: Import Asset Bundle -->
+<div id="importModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 540px; margin: 0; padding: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+            <h3>Import Asset Bundle</h3>
+            <button type="button" class="btn-icon" onclick="closeImportModal()">✕</button>
+        </div>
+
+        <p style="color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; line-height: 1.5;">
+            Upload an exported asset package ZIP bundle. The platform will reconstruct the asset, install all version archives, extract icon/media files, and synchronize database records automatically.
+        </p>
+
+        <form action="/admin/assets/import" method="POST" enctype="multipart/form-data">
+            <label>Select Asset Bundle Archive (.zip)</label>
+            <input type="file" name="bundle_file" accept=".zip" required style="margin-bottom: 18px;">
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn" style="background: var(--surface-alt);" onclick="closeImportModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">Import & Rebuild Asset</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openImportModal() {
+    document.getElementById('importModal').style.display = 'flex';
+}
+function closeImportModal() {
+    document.getElementById('importModal').style.display = 'none';
+}
+</script>
 {% endblock %}
